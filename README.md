@@ -1,6 +1,6 @@
-# Welcome to your Expo app 👋
+# CCPD NITW
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native application for the Centre for Career Development at NIT Warangal, built with Expo.
 
 ## Get started
 
