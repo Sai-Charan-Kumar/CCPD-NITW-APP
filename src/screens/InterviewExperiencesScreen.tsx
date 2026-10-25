@@ -4,14 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import {
   BookOpen,
-  Award,
   CheckCircle,
-  HelpCircle,
   Clock,
   Sparkles,
 } from 'lucide-react-native';

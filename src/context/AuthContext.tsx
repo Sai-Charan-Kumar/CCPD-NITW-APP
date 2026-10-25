@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { AuthUser, UserRole } from '../types';
-import { authenticateMockUser, mockAuthAccounts } from '../data/mockAuth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { axiosClient, getApiErrorMessage } from '../api/axiosClient';
+import { AuthUser, Department } from '../types';
 
 export interface RegisterPayload {
   name: string;
   rollNumber: string;
-  department: string;
+  department: Department;
   cgpa: number;
   email: string;
   password?: string;
@@ -15,7 +16,6 @@ interface AuthContextType {
   currentUser: AuthUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  loginAsMockRole: (role: UserRole) => void;
   register: (payload: RegisterPayload) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }
@@ -23,76 +23,64 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Start with default STUDENT logged in or null (let's default to null so user can experience Login flow, or easily login)
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = async (
-    email: string,
-    password: string
-  ): Promise<{ success: boolean; message?: string }> => {
+  useEffect(() => {
+    const restoreSession = async () => {
+      const token = await AsyncStorage.getItem('ccpd_token');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const response = await axiosClient.get<{ user: AuthUser }>('/users/me');
+        setCurrentUser(response.data.user);
+      } catch {
+        await AsyncStorage.removeItem('ccpd_token');
+        setCurrentUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void restoreSession();
+  }, []);
+
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
-    // Simulate slight network delay
-    await new Promise((res) => setTimeout(res, 250));
-
-    const authResult = authenticateMockUser(email, password);
-    setIsLoading(false);
-
-    if (authResult.success && authResult.user) {
-      setCurrentUser(authResult.user);
+    try {
+      const response = await axiosClient.post<{ token: string; user: AuthUser }>('/auth/login', { email, password });
+      await AsyncStorage.setItem('ccpd_token', response.data.token);
+      setCurrentUser(response.data.user);
       return { success: true };
-    }
-
-    return {
-      success: false,
-      message: authResult.message || 'Invalid credentials',
-    };
-  };
-
-  const loginAsMockRole = (role: UserRole) => {
-    const account = mockAuthAccounts.find((a) => a.user.role === role);
-    if (account) {
-      setCurrentUser(account.user);
+    } catch (error) {
+      return { success: false, message: getApiErrorMessage(error) };
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const register = async (
-    payload: RegisterPayload
-  ): Promise<{ success: boolean; message?: string }> => {
+  const register = async (payload: RegisterPayload) => {
     setIsLoading(true);
-    await new Promise((res) => setTimeout(res, 300));
-
-    const newStudentUser: AuthUser = {
-      id: `STU-${Date.now().toString().slice(-5)}`,
-      email: payload.email,
-      name: payload.name,
-      role: 'STUDENT',
-      rollNumber: payload.rollNumber,
-      department: payload.department,
-      cgpa: payload.cgpa,
-      phone: '+91 98765 00000',
-    };
-
-    setCurrentUser(newStudentUser);
-    setIsLoading(false);
-    return { success: true };
+    try {
+      const response = await axiosClient.post<{ token: string; user: AuthUser }>('/auth/register', payload);
+      await AsyncStorage.setItem('ccpd_token', response.data.token);
+      setCurrentUser(response.data.user);
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: getApiErrorMessage(error) };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
+    void AsyncStorage.removeItem('ccpd_token');
     setCurrentUser(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        currentUser,
-        isLoading,
-        login,
-        loginAsMockRole,
-        register,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{ currentUser, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -100,8 +88,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

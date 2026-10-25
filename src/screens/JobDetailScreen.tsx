@@ -8,18 +8,16 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import {
   Briefcase,
   MapPin,
   Clock,
   CheckCircle2,
-  AlertCircle,
   FileText,
   Download,
   ShieldCheck,
   ChevronRight,
-  Layers,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { StatusBadge } from '../components/StatusBadge';
@@ -31,7 +29,6 @@ type JobDetailRouteProp = RouteProp<RootStackParamList, 'JobDetail'>;
 
 export const JobDetailScreen: React.FC = () => {
   const route = useRoute<JobDetailRouteProp>();
-  const navigation = useNavigation();
   const { driveId } = route.params;
 
   const [drive, setDrive] = useState<PlacementDrive | null>(null);

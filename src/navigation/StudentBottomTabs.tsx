@@ -1,5 +1,4 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   LayoutDashboard,
@@ -10,6 +9,7 @@ import { StudentBottomTabParamList } from '../types';
 import { HomeScreen } from '../screens/HomeScreen';
 import { GroupsScreen } from '../screens/GroupsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { FloatingTabBar } from '../components/FloatingTabBar';
 
 const Tab = createBottomTabNavigator<StudentBottomTabParamList>();
 
@@ -17,8 +17,11 @@ export const StudentBottomTabs: React.FC = () => {
   return (
     <Tab.Navigator
       initialRouteName="Home"
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: true,
+        tabBarActiveTintColor: COLORS.primaryAccent,
+        tabBarInactiveTintColor: COLORS.textMuted,
         headerStyle: {
           backgroundColor: COLORS.surface,
           elevation: 0,
@@ -30,19 +33,11 @@ export const StudentBottomTabs: React.FC = () => {
           ...TYPOGRAPHY.h3,
           color: COLORS.primary,
         },
-        tabBarActiveTintColor: COLORS.primaryAccent,
-        tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopWidth: 1,
-          borderTopColor: COLORS.border,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          height: 128,
         },
       }}
     >

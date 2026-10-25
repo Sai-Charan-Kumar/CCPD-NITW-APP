@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,11 +16,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChevronDown, Check, UserPlus } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
-import { AuthStackParamList } from '../../types';
+import { AuthStackParamList, Department } from '../../types';
 
 type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
-const BRANCHES = [
+const BRANCHES: Department[] = [
   'Computer Science & Engineering',
   'Electronics & Communication Engineering',
   'Electrical & Electronics Engineering',
@@ -38,7 +37,7 @@ export const RegisterScreen: React.FC = () => {
 
   const [fullName, setFullName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
-  const [department, setDepartment] = useState(BRANCHES[0]);
+  const [department, setDepartment] = useState<Department>(BRANCHES[0]);
   const [cgpa, setCgpa] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,8 +45,18 @@ export const RegisterScreen: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleRegister = async () => {
-    if (!fullName.trim() || !rollNumber.trim() || !email.trim() || !cgpa.trim()) {
+    if (!fullName.trim() || !rollNumber.trim() || !email.trim() || !cgpa.trim() || !password) {
       setErrorMsg('Please fill in all required fields.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrorMsg('Please enter a valid student email address.');
+      return;
+    }
+
+    if (password.length < 8) {
+      setErrorMsg('Password must be at least 8 characters.');
       return;
     }
 
@@ -180,7 +189,7 @@ export const RegisterScreen: React.FC = () => {
 
           {/* Password */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Create Password</Text>
+            <Text style={styles.label}>Create Password *</Text>
             <TextInput
               style={styles.input}
               placeholder="Create account password"

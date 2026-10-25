@@ -11,10 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
-  User,
-  GraduationCap,
   FileText,
-  CheckCircle2,
   ShieldCheck,
   TrendingUp,
   BookOpen,
@@ -24,11 +21,10 @@ import {
   LogOut,
   Mail,
   Phone,
-  Briefcase,
 } from 'lucide-react-native';
-import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
 import { placementService } from '../data/placementService';
-import { StudentProfile, RootStackParamList } from '../types';
+import { Department, StudentInterviewRecord, StudentProfile, RootStackParamList } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -39,13 +35,31 @@ export const ProfileScreen: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [interviewHistory, setInterviewHistory] = useState<StudentInterviewRecord[]>([]);
 
   useEffect(() => {
     async function loadProfile() {
       try {
         setLoading(true);
+        if (
+          currentUser &&
+          (currentUser.role === 'STUDENT' || currentUser.role === 'TNP') &&
+          currentUser.rollNumber &&
+          currentUser.department &&
+          currentUser.cgpa !== undefined
+        ) {
+          placementService.updateStudentIdentity({
+            name: currentUser.name,
+            rollNumber: currentUser.rollNumber,
+            email: currentUser.email,
+            department: currentUser.department as Department,
+            cgpa: currentUser.cgpa,
+          });
+        }
         const data = await placementService.getStudentProfile();
         setStudent(data);
+        const history = await placementService.getStudentInterviewHistory(data.id);
+        setInterviewHistory(history);
       } catch (err) {
         console.error('Failed to load student profile', err);
       } finally {
@@ -53,7 +67,7 @@ export const ProfileScreen: React.FC = () => {
       }
     }
     loadProfile();
-  }, []);
+  }, [currentUser]);
 
   const handleLogout = () => {
     Alert.alert('Confirm Logout', 'Are you sure you want to log out of CCPD Placement Portal?', [
@@ -74,17 +88,18 @@ export const ProfileScreen: React.FC = () => {
     );
   }
 
-  const isStudent = !currentUser || currentUser.role === 'STUDENT';
+  const isStudent = !currentUser || currentUser.role !== 'CCPD_HEAD';
   const displayName = currentUser?.name || student.name;
   const displayEmail = currentUser?.email || student.email;
   const displayRole = currentUser?.role || 'STUDENT';
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       {/* User Identity Card */}
       <View style={[styles.profileCard, SHADOWS.card]}>
         <View style={styles.avatarSection}>
@@ -123,15 +138,12 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Verification Status Pill */}
-        <View style={styles.verifiedRow}>
-          <ShieldCheck size={16} color={COLORS.successDark} />
-          <Text style={styles.verifiedLabel}>
-            {isStudent
-              ? 'Institute Verified Student • Eligible for Active Recruitment Drives'
-              : 'Authorized CCPD Placement Officer Account'}
-          </Text>
-        </View>
+        {!isStudent && (
+          <View style={styles.verifiedRow}>
+            <ShieldCheck size={16} color={COLORS.successDark} />
+            <Text style={styles.verifiedLabel}>Authorized CCPD Placement Officer Account</Text>
+          </View>
+        )}
       </View>
 
       {/* Student Academic & Resume Sections (Only shown for Students) */}
@@ -139,7 +151,7 @@ export const ProfileScreen: React.FC = () => {
         <>
           {/* Academic Records Breakdown */}
           <View style={[styles.sectionCard, SHADOWS.card]}>
-            <Text style={styles.sectionTitle}>Academic Records (Institute Verified)</Text>
+            <Text style={styles.sectionTitle}>Academic Records</Text>
 
             <View style={styles.academicGrid}>
               <View style={styles.academicBox}>
@@ -225,6 +237,37 @@ export const ProfileScreen: React.FC = () => {
               ))}
             </View>
           </View>
+
+          <View style={[styles.sectionCard, SHADOWS.card]}>
+        <View style={styles.interviewSectionHeader}>
+              <View style={styles.interviewSectionTitle}>
+                <Text style={styles.sectionTitle}>My Interviews</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Record interviews you attended and keep your experience history.
+                </Text>
+              </View>
+            </View>
+
+            {interviewHistory.length === 0 ? (
+              <Text style={styles.emptyInterviewText}>
+                No interviews recorded yet. Add one after you interview with a company.
+              </Text>
+            ) : (
+              interviewHistory.map((record) => (
+                <View key={record.id} style={styles.interviewRecord}>
+                  <View style={styles.interviewRecordHeader}>
+                    <View style={styles.interviewRecordTitle}>
+                      <Text style={styles.interviewCompany}>{record.companyName}</Text>
+                      <Text style={styles.interviewRole}>{record.role}</Text>
+                    </View>
+                    <Text style={styles.interviewOutcome}>{record.outcome}</Text>
+                  </View>
+                  <Text style={styles.interviewDate}>{record.interviewDate}</Text>
+                  <Text style={styles.interviewNotes}>{record.notes}</Text>
+                </View>
+              ))
+            )}
+          </View>
         </>
       )}
 
@@ -302,7 +345,8 @@ export const ProfileScreen: React.FC = () => {
         <LogOut size={18} color={COLORS.danger} />
         <Text style={styles.logoutBtnText}>Log Out</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 };
 
@@ -318,7 +362,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: SPACING.lg,
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: TAB_BAR_RESERVED_HEIGHT,
   },
   profileCard: {
     backgroundColor: COLORS.surface,
@@ -584,6 +628,59 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
     lineHeight: 16,
+  },
+  interviewSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.md,
+  },
+  interviewSectionTitle: {
+    flex: 1,
+    marginRight: SPACING.md,
+  },
+  emptyInterviewText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textMuted,
+  },
+  interviewRecord: {
+    borderTopColor: COLORS.border,
+    borderTopWidth: 1,
+    paddingVertical: SPACING.md,
+  },
+  interviewRecordHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  interviewRecordTitle: {
+    flex: 1,
+    marginRight: SPACING.sm,
+  },
+  interviewCompany: {
+    ...TYPOGRAPHY.bodyBold,
+    color: COLORS.textPrimary,
+  },
+  interviewRole: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  interviewOutcome: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primaryAccent,
+    fontWeight: '700',
+  },
+  interviewDate: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textMuted,
+    marginTop: SPACING.xs,
+  },
+  interviewNotes: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    marginTop: SPACING.sm,
   },
   logoutBtn: {
     flexDirection: 'row',

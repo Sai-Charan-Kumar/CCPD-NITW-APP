@@ -9,8 +9,8 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Briefcase, CheckCircle2, Filter } from 'lucide-react-native';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { Briefcase, CheckCircle2 } from 'lucide-react-native';
+import { COLORS, RADIUS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
 import { SearchBar } from '../components/SearchBar';
 import { DriveCard } from '../components/DriveCard';
 import { EmptyState } from '../components/EmptyState';
@@ -61,7 +61,10 @@ export const DrivesScreen: React.FC = () => {
   }, [searchQuery, selectedCategory, onlyEligible]);
 
   useEffect(() => {
-    loadDrives();
+    const loadTimer = setTimeout(() => {
+      void loadDrives();
+    }, 0);
+    return () => clearTimeout(loadTimer);
   }, [loadDrives]);
 
   const onRefresh = async () => {
@@ -204,6 +207,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: SPACING.lg,
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: TAB_BAR_RESERVED_HEIGHT,
   },
 });

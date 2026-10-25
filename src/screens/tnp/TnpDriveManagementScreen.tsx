@@ -101,17 +101,6 @@ export const TnpDriveManagementScreen: React.FC = () => {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* Officer Header Info */}
-      <View style={[styles.headerBanner, SHADOWS.card]}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.badgeText}>T&P Coordinator Portal</Text>
-          <Text style={styles.headerTitle}>Drive Management & Dispatch</Text>
-          <Text style={styles.headerSubtitle}>
-            Monitor active corporate drives and dispatch official instructions to registered batches.
-          </Text>
-        </View>
-      </View>
-
       {/* Broadcast Tool Section */}
       <View style={[styles.broadcastCard, SHADOWS.card]}>
         <View style={styles.broadcastHeader}>
@@ -274,33 +263,6 @@ const styles = StyleSheet.create({
     color: COLORS.textInverse,
     fontSize: 15,
     fontWeight: '700',
-  },
-  headerBanner: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  badgeText: {
-    ...TYPOGRAPHY.caption,
-    color: '#93C5FD',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  headerTitle: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.textInverse,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    ...TYPOGRAPHY.caption,
-    color: '#E0E7FF',
-    lineHeight: 16,
   },
   broadcastCard: {
     backgroundColor: COLORS.surface,

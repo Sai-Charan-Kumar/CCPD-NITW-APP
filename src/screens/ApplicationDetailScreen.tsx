@@ -11,12 +11,10 @@ import {
 } from 'react-native';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import {
-  Calendar,
   Video,
   Award,
   ExternalLink,
   MessageSquare,
-  AlertCircle,
   Clock,
   ShieldCheck,
 } from 'lucide-react-native';
