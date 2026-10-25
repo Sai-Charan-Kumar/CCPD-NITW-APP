@@ -14,7 +14,6 @@ import {
   Award,
   Calendar,
   CheckCircle2,
-  Trash2,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { EmptyState } from '../components/EmptyState';

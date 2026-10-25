@@ -18,7 +18,7 @@ export const EligibilityModal: React.FC<EligibilityModalProps> = ({
   drive,
   student,
 }) => {
-  const { isEligible, reasons, passedCriteria } = placementService.checkEligibility(student, drive);
+  const { isEligible } = placementService.checkEligibility(student, drive);
 
   return (
     <Modal

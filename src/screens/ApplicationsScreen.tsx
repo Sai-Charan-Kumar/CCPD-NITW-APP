@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { FileCheck, Sparkles } from 'lucide-react-native';
+import { FileCheck } from 'lucide-react-native';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { ApplicationCard } from '../components/ApplicationCard';
 import { EmptyState } from '../components/EmptyState';
@@ -36,7 +36,10 @@ export const ApplicationsScreen: React.FC = () => {
   }, [selectedTab]);
 
   useEffect(() => {
-    loadApplications();
+    const loadTimer = setTimeout(() => {
+      void loadApplications();
+    }, 0);
+    return () => clearTimeout(loadTimer);
   }, [loadApplications]);
 
   const onRefresh = async () => {

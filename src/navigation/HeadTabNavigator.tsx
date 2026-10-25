@@ -1,5 +1,4 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   LayoutDashboard,
@@ -13,6 +12,7 @@ import { CcpdHeadDashboardScreen } from '../screens/head/CcpdHeadDashboardScreen
 import { DrivesScreen } from '../screens/DrivesScreen';
 import { PlacementStatsScreen } from '../screens/PlacementStatsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { FloatingTabBar } from '../components/FloatingTabBar';
 
 const Tab = createBottomTabNavigator<HeadTabParamList>();
 
@@ -20,8 +20,11 @@ export const HeadTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
       initialRouteName="HeadDashboard"
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: true,
+        tabBarActiveTintColor: COLORS.purple,
+        tabBarInactiveTintColor: COLORS.textMuted,
         headerStyle: {
           backgroundColor: COLORS.surface,
           elevation: 0,
@@ -33,19 +36,11 @@ export const HeadTabNavigator: React.FC = () => {
           ...TYPOGRAPHY.h3,
           color: COLORS.primary,
         },
-        tabBarActiveTintColor: COLORS.purple,
-        tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopWidth: 1,
-          borderTopColor: COLORS.border,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          height: 128,
         },
       }}
     >

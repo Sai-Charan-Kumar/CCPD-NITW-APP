@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, GraduationCap } from 'lucide-react-native';
-import { COLORS, SPACING, RADIUS, SHADOWS, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../constants/theme';
 import { AuthUser, StudentProfile } from '../types';
 
 interface HeaderProps {
@@ -21,8 +22,10 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onPressManageDrives,
 }) => {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + SPACING.sm }]}>
       <TouchableOpacity
         style={styles.profileSection}
         onPress={onPressProfile}
@@ -39,12 +42,6 @@ export const Header: React.FC<HeaderProps> = ({
         </View>
 
         <View style={styles.infoSection}>
-          <View style={styles.greetingRow}>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <View style={styles.verifiedBadge}>
-              <Text style={styles.verifiedText}>Verified</Text>
-            </View>
-          </View>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>{student.name}</Text>
             {currentUser?.role === 'TNP' && (
@@ -91,7 +88,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+    paddingBottom: SPACING.md,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
@@ -120,28 +117,6 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     flex: 1,
-  },
-  greetingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  greeting: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-  },
-  verifiedBadge: {
-    backgroundColor: COLORS.successLight,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: COLORS.successBorder,
-  },
-  verifiedText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: COLORS.successDark,
   },
   name: {
     ...TYPOGRAPHY.h4,

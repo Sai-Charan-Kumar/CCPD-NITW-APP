@@ -13,14 +13,10 @@ import {
   Briefcase,
   FileCheck2,
   Award,
-  Bell,
-  ArrowRight,
   TrendingUp,
   BookOpen,
-  Calendar,
-  Sparkles,
 } from 'lucide-react-native';
-import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, RADIUS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
 import { Header } from '../components/Header';
 import { StatCard } from '../components/StatCard';
 import { DriveCard } from '../components/DriveCard';
@@ -106,20 +102,6 @@ export const HomeScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
         }
       >
-        {/* Placement Status Banner */}
-        <View style={[styles.statusBanner, SHADOWS.card]}>
-          <View style={styles.statusBannerLeft}>
-            <View style={styles.statusBadgeRow}>
-              <Sparkles size={14} color={COLORS.primaryAccent} />
-              <Text style={styles.statusBadgeText}>Active Placement Candidate</Text>
-            </View>
-            <Text style={styles.statusTitle}>All Campus Recruitment Drives Open</Text>
-            <Text style={styles.statusSubtitle}>
-              CGPA: {student.cgpa.toFixed(2)} • 0 Active Backlogs • CCPD Verified
-            </Text>
-          </View>
-        </View>
-
         {/* Quick Metrics */}
         <View style={styles.statsGrid}>
           <StatCard
@@ -238,42 +220,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: SPACING.lg,
-    paddingBottom: SPACING.xxxl,
-  },
-  statusBanner: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.primaryAccent,
-    borderLeftWidth: 5,
-    borderLeftColor: COLORS.primaryAccent,
-  },
-  statusBannerLeft: {
-    flex: 1,
-  },
-  statusBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.primaryAccent,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statusTitle: {
-    ...TYPOGRAPHY.h4,
-    color: COLORS.textPrimary,
-    marginBottom: 4,
-  },
-  statusSubtitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
+    paddingBottom: TAB_BAR_RESERVED_HEIGHT,
   },
   statsGrid: {
     flexDirection: 'row',

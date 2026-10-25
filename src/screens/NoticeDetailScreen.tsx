@@ -16,7 +16,6 @@ import {
   Pin,
   Calendar,
   User,
-  Share2,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { placementService } from '../data/placementService';

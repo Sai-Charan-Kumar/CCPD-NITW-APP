@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Bell, AlertCircle, Pin } from 'lucide-react-native';
+import { Bell } from 'lucide-react-native';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { NoticeCard } from '../components/NoticeCard';
 import { EmptyState } from '../components/EmptyState';
@@ -46,7 +46,10 @@ export const NoticesScreen: React.FC = () => {
   }, [selectedCategory]);
 
   useEffect(() => {
-    loadNotices();
+    const loadTimer = setTimeout(() => {
+      void loadNotices();
+    }, 0);
+    return () => clearTimeout(loadTimer);
   }, [loadNotices]);
 
   const onRefresh = async () => {

@@ -1,4 +1,4 @@
-import { StyleSheet, ViewStyle } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 export const COLORS = {
   // Brand Primary & Academic Navy
@@ -69,6 +69,8 @@ export const SPACING = {
   xxxl: 32,
   huge: 40,
 };
+
+export const TAB_BAR_RESERVED_HEIGHT = 160;
 
 export const RADIUS = {
   xs: 4,

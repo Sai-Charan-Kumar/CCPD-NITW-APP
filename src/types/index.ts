@@ -239,6 +239,16 @@ export interface InterviewExperience {
   postedDate: string;
 }
 
+export interface StudentInterviewRecord {
+  id: string;
+  studentId: string;
+  companyName: string;
+  role: string;
+  interviewDate: string;
+  outcome: 'Selected' | 'Offered' | 'Reached Final Round' | 'Not Selected' | 'In Progress';
+  notes: string;
+}
+
 export interface PlacementStatistics {
   academicYear: string;
   totalStudentsEligible: number;

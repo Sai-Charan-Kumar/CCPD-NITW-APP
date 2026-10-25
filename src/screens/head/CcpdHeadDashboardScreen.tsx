@@ -13,17 +13,14 @@ import {
   Platform,
 } from 'react-native';
 import {
-  ShieldAlert,
   Mail,
   Send,
   Building2,
-  TrendingUp,
-  Award,
   ChevronDown,
   Check,
   Megaphone,
 } from 'lucide-react-native';
-import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme';
+import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../../constants/theme';
 import { placementService } from '../../data/placementService';
 import { PlacementStatistics } from '../../types';
 
@@ -260,7 +257,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: SPACING.lg,
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: TAB_BAR_RESERVED_HEIGHT,
   },
   executiveCard: {
     backgroundColor: COLORS.primary,

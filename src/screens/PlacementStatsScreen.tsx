@@ -7,14 +7,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {
-  TrendingUp,
-  Award,
   Users,
   Building2,
-  PieChart,
 } from 'lucide-react-native';
-import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
-import { StatCard } from '../components/StatCard';
+import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
 import { placementService } from '../data/placementService';
 import { PlacementStatistics } from '../types';
 
@@ -153,7 +149,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: SPACING.lg,
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: TAB_BAR_RESERVED_HEIGHT,
   },
   heroCard: {
     backgroundColor: COLORS.primary,
