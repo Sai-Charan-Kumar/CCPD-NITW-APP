@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,80 +17,55 @@ import {
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { EmptyState } from '../components/EmptyState';
-import { RootStackParamList } from '../types';
+import { NotificationItem, RootStackParamList } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-interface NotificationItem {
-  id: string;
-  title: string;
-  body: string;
-  time: string;
-  type: 'drive' | 'shortlist' | 'interview' | 'general';
-  isRead: boolean;
-  targetScreen?: keyof RootStackParamList;
-  targetParams?: any;
-}
-
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'NOTIF-1',
-    title: 'Microsoft Round 2 Shortlist Published',
-    body: 'You have been shortlisted for Technical Round 2 (Design & Core). Check your assigned slot.',
-    time: '2 hours ago',
-    type: 'shortlist',
-    isRead: false,
-    targetScreen: 'NoticeDetail',
-    targetParams: { noticeId: 'NOT-2026-042' },
-  },
-  {
-    id: 'NOTIF-2',
-    title: 'Google SDE Online Assessment Live in 48h',
-    body: 'Assessment invitations have been sent to your student email. Complete system checks.',
-    time: '5 hours ago',
-    type: 'drive',
-    isRead: false,
-    targetScreen: 'JobDetail',
-    targetParams: { driveId: 'DRV-2026-001' },
-  },
-  {
-    id: 'NOTIF-3',
-    title: 'Texas Instruments Pre-Placement Talk',
-    body: 'Mandatory PPT tomorrow at 04:30 PM in Dr. B.R. Ambedkar Central Auditorium.',
-    time: 'Yesterday',
-    type: 'interview',
-    isRead: true,
-    targetScreen: 'NoticeDetail',
-    targetParams: { noticeId: 'NOT-2026-041' },
-  },
-  {
-    id: 'NOTIF-4',
-    title: 'CCPD Placement Gazette 2026 Ratified',
-    body: 'Review the updated policies on Dream and Super Dream upgrades and rules.',
-    time: '3 days ago',
-    type: 'general',
-    isRead: true,
-    targetScreen: 'NoticeDetail',
-    targetParams: { noticeId: 'NOT-2026-039' },
-  },
-];
+import { placementService } from '../data/placementService';
 
 export const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const loadNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      setErrorMessage('');
+      setNotifications(await placementService.getNotifications());
+    } catch (error) {
+      console.error('Failed to load notifications', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to load notifications.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadNotifications(); }, [loadNotifications]);
+
+  const markAllRead = async () => {
+    try {
+      await placementService.markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to update notifications.');
+    }
   };
 
-  const handleNotificationPress = (notif: NotificationItem) => {
+  const handleNotificationPress = async (notif: NotificationItem) => {
+    if (!notif.isRead) {
+      try {
+        await placementService.markNotificationRead(notif.id);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : 'Unable to update notification.');
+        return;
+      }
+    }
     setNotifications((prev) =>
       prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
     );
-
-    if (notif.targetScreen) {
-      navigation.navigate(notif.targetScreen as any, notif.targetParams);
-    }
+    if (notif.driveId) navigation.navigate('JobDetail', { driveId: notif.driveId });
   };
 
   const getIcon = (type: NotificationItem['type']) => {
@@ -150,11 +125,21 @@ export const NotificationsScreen: React.FC = () => {
           </TouchableOpacity>
         )}
         ListEmptyComponent={
+          loading ? null : errorMessage ? (
+            <View style={styles.stateCard}>
+              <Text style={styles.stateTitle}>Could not load notifications</Text>
+              <Text style={styles.stateBody}>{errorMessage}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={() => void loadNotifications()}>
+                <Text style={styles.retryText}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
           <EmptyState
             icon={<Bell size={32} color={COLORS.textMuted} />}
             title="No Notifications"
             description="You are caught up with all campus placement alerts."
           />
+          )
         }
       />
     </View>
@@ -253,4 +238,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.textMuted,
   },
+  stateCard: {
+    marginTop: SPACING.xl,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+  },
+  stateTitle: { ...TYPOGRAPHY.bodyBold, color: COLORS.textPrimary, textAlign: 'center' },
+  stateBody: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, textAlign: 'center', marginTop: SPACING.xs },
+  retryButton: { marginTop: SPACING.md, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm },
+  retryText: { ...TYPOGRAPHY.bodyBold, color: COLORS.textInverse },
 });

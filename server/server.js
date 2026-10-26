@@ -15,6 +15,8 @@ app.use('/api/drives', require('./routes/driveRoutes'));
 app.use('/api/applications', require('./routes/applicationRoutes'));
 app.use('/api/notices', require('./routes/noticeRoutes'));
 app.use('/api/stats', require('./routes/statsRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/messages', require('./routes/messageRoutes'));
 app.use((error, req, res, next) => {
   console.error(error);
   res.status(error.name === 'ValidationError' ? 400 : 500).json({ message: 'Server error.', details: error.message });

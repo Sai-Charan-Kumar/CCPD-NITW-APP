@@ -41,13 +41,35 @@ the API server or authenticated application flows can be used.
    npx expo start
    ```
 
-For a physical device, set `EXPO_PUBLIC_API_URL` in the Expo environment to the
-backend machine's LAN address, for example
-`http://192.168.1.10:5000/api`, instead of `localhost`.
+The frontend reads its backend URL from `EXPO_PUBLIC_API_URL`. Copy
+`.env.example` to `.env` in the project root. Use
+`http://localhost:5000/api` for web or an iOS simulator, and use
+`http://10.0.2.2:5000/api` for an Android emulator. For a physical device,
+replace the host with the backend computer's LAN IP address.
 
-Student accounts can be created through the registration screen. TNP and CCPD
+Student accounts can be created through the registration screen using a NITW
+student email in the format `xxYYbbBxxxx@student.nitw.ac.in`, for example
+`sm24csb0a77@student.nitw.ac.in`. TNP and CCPD
 Head accounts should be created directly by an administrator in MongoDB with
 roles `tnp` and `head`; public registration intentionally creates students only.
+Registration sends a six-digit OTP through SMTP and creates the account only
+after the OTP is verified. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`,
+`SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM` in `server/.env`.
+
+Shortlists are persisted against applications. TNP and CCPD Head users can
+publish a shortlist with `POST /api/applications/drive/:driveId/shortlist`
+using either `identifiers` (student emails or roll numbers) or a CSV string:
+
+```json
+{
+  "identifiers": ["sm24csb0a77@student.nitw.ac.in", "CS24B077"],
+  "csv": "",
+  "notes": "Report to Lab 2 at 10:00 AM."
+}
+```
+
+The endpoint updates shortlisted and non-shortlisted applicants and creates
+targeted notifications, which students retrieve from `GET /api/notifications`.
 
 In the output, you'll find options to open the app in a
 

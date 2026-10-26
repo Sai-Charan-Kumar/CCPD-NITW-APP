@@ -33,7 +33,7 @@ const BRANCHES: Department[] = [
 
 export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<RegisterNavProp>();
-  const { register, isLoading } = useAuth();
+  const { register, verifyRegistration, isLoading } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
@@ -43,6 +43,8 @@ export const RegisterScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showBranchModal, setShowBranchModal] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [otp, setOtp] = useState('');
 
   const handleRegister = async () => {
     if (!fullName.trim() || !rollNumber.trim() || !email.trim() || !cgpa.trim() || !password) {
@@ -50,8 +52,8 @@ export const RegisterScreen: React.FC = () => {
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setErrorMsg('Please enter a valid student email address.');
+    if (!/^[a-z]{2}\d{2}[a-z]{2}b[a-z0-9]{4}@student\.nitw\.ac\.in$/i.test(email.trim())) {
+      setErrorMsg('Use your NITW student email, for example sm24csb0a77@student.nitw.ac.in.');
       return;
     }
 
@@ -76,19 +78,37 @@ export const RegisterScreen: React.FC = () => {
       password,
     });
 
+    if (result.requiresVerification && result.email) {
+      setVerificationEmail(result.email);
+      setErrorMsg('');
+      return;
+    }
     if (!result.success) {
       setErrorMsg(result.message || 'Registration failed.');
     }
   };
 
+  const handleVerify = async () => {
+    if (!/^\d{6}$/.test(otp)) {
+      setErrorMsg('Enter the six-digit OTP sent to your email.');
+      return;
+    }
+    const result = await verifyRegistration(verificationEmail, otp);
+    if (!result.success) setErrorMsg(result.message || 'Verification failed.');
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
     >
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
@@ -108,6 +128,32 @@ export const RegisterScreen: React.FC = () => {
             </View>
           ) : null}
 
+          {verificationEmail ? (
+            <>
+              <Text style={styles.title}>Verify your email</Text>
+              <Text style={styles.subtitle}>Enter the six-digit OTP sent to {verificationEmail}.</Text>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Verification OTP</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="123456"
+                  placeholderTextColor={COLORS.textMuted}
+                  selectionColor={COLORS.primaryAccent}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={otp}
+                  onChangeText={(text) => {
+                    setOtp(text.replace(/\D/g, ''));
+                    setErrorMsg('');
+                  }}
+                />
+              </View>
+              <TouchableOpacity style={styles.registerBtn} onPress={handleVerify} disabled={isLoading} activeOpacity={0.85}>
+                {isLoading ? <ActivityIndicator color={COLORS.textInverse} size="small" /> : <Text style={styles.registerBtnText}>Verify Email</Text>}
+              </TouchableOpacity>
+            </>
+          ) : (
+          <>
           {/* Full Name */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Full Name *</Text>
@@ -115,6 +161,7 @@ export const RegisterScreen: React.FC = () => {
               style={styles.input}
               placeholder="e.g. Rahul Sharma"
               placeholderTextColor={COLORS.textMuted}
+              selectionColor={COLORS.primaryAccent}
               value={fullName}
               onChangeText={(t) => {
                 setFullName(t);
@@ -130,6 +177,7 @@ export const RegisterScreen: React.FC = () => {
               style={styles.input}
               placeholder="e.g. CS22B089"
               placeholderTextColor={COLORS.textMuted}
+              selectionColor={COLORS.primaryAccent}
               value={rollNumber}
               autoCapitalize="characters"
               onChangeText={(t) => {
@@ -161,6 +209,7 @@ export const RegisterScreen: React.FC = () => {
               style={styles.input}
               placeholder="e.g. 8.84"
               placeholderTextColor={COLORS.textMuted}
+              selectionColor={COLORS.primaryAccent}
               keyboardType="decimal-pad"
               value={cgpa}
               onChangeText={(t) => {
@@ -177,6 +226,7 @@ export const RegisterScreen: React.FC = () => {
               style={styles.input}
               placeholder="e.g. rahul_cs22@student.nitw.ac.in"
               placeholderTextColor={COLORS.textMuted}
+              selectionColor={COLORS.primaryAccent}
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
@@ -194,6 +244,7 @@ export const RegisterScreen: React.FC = () => {
               style={styles.input}
               placeholder="Create account password"
               placeholderTextColor={COLORS.textMuted}
+              selectionColor={COLORS.primaryAccent}
               secureTextEntry
               value={password}
               onChangeText={(t) => {
@@ -227,6 +278,8 @@ export const RegisterScreen: React.FC = () => {
               Already registered? <Text style={styles.loginLinkBold}>Sign In</Text>
             </Text>
           </TouchableOpacity>
+          </>
+          )}
         </View>
       </ScrollView>
 
@@ -275,7 +328,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.xxl,
   },

@@ -142,6 +142,7 @@ export interface PlacementGroup {
 export interface GroupMessage {
   id: string;
   groupId: string;
+  senderId?: string;
   senderName: string;
   message: string;
   sentAt: string;
@@ -184,6 +185,16 @@ export interface Application {
   salaryDisplay: string;
   timeline: ApplicationTimelineItem[];
   canWithdraw: boolean;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  body: string;
+  time: string;
+  type: 'drive' | 'shortlist' | 'interview' | 'general';
+  isRead: boolean;
+  driveId?: string;
 }
 
 export type NoticePriority = 'high' | 'normal' | 'low';
