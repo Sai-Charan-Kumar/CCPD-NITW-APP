@@ -16,7 +16,8 @@ interface AuthContextType {
   currentUser: AuthUser | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  register: (payload: RegisterPayload) => Promise<{ success: boolean; message?: string }>;
+  register: (payload: RegisterPayload) => Promise<{ success: boolean; message?: string; requiresVerification?: boolean; email?: string }>;
+  verifyRegistration: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }
 
@@ -63,7 +64,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (payload: RegisterPayload) => {
     setIsLoading(true);
     try {
-      const response = await axiosClient.post<{ token: string; user: AuthUser }>('/auth/register', payload);
+      const response = await axiosClient.post<{ token?: string; user?: AuthUser; requiresVerification?: boolean; email?: string }>('/auth/register', payload);
+      if (response.data.requiresVerification) {
+        return { success: true, requiresVerification: true, email: response.data.email };
+      }
+      if (!response.data.token || !response.data.user) {
+        return { success: false, message: 'Registration returned an invalid response.' };
+      }
+      await AsyncStorage.setItem('ccpd_token', response.data.token);
+      setCurrentUser(response.data.user);
+      return { success: true };
+    } catch (error) {
+      return { success: false, message: getApiErrorMessage(error) };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyRegistration = async (email: string, otp: string) => {
+    setIsLoading(true);
+    try {
+      const response = await axiosClient.post<{ token: string; user: AuthUser }>('/auth/verify-registration', { email, otp });
       await AsyncStorage.setItem('ccpd_token', response.data.token);
       setCurrentUser(response.data.user);
       return { success: true };
@@ -80,7 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ currentUser, isLoading, login, register, verifyRegistration, logout }}>
       {children}
     </AuthContext.Provider>
   );

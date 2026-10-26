@@ -9,6 +9,8 @@ import {
   PlacementStatistics,
   StudentInterviewRecord,
   StudentProfile,
+  NotificationItem,
+  GroupMessage,
 } from '../types';
 
 type DriveFilters = { category?: string; query?: string; onlyEligible?: boolean };
@@ -112,6 +114,38 @@ export const placementService = {
 
   async getPlacementStats(): Promise<PlacementStatistics> {
     const response = await axiosClient.get<PlacementStatistics>('/stats');
+    return response.data;
+  },
+
+  async publishShortlist(driveId: string, identifiers: string[], csv?: string, notes?: string) {
+    const response = await axiosClient.post<{ success: boolean; shortlistedCount: number; rejectedCount: number }>(
+      `/applications/drive/${driveId}/shortlist`, { identifiers, csv, notes }
+    );
+    return response.data;
+  },
+
+  async getNotifications(): Promise<NotificationItem[]> {
+    const response = await axiosClient.get<NotificationItem[]>('/notifications');
+    return response.data;
+  },
+
+  async markNotificationRead(id: string): Promise<void> {
+    await axiosClient.put(`/notifications/${id}/read`);
+  },
+
+  async markAllNotificationsRead(): Promise<void> {
+    await axiosClient.put('/notifications/read-all');
+  },
+
+  async getGroupMessages(groupId: string): Promise<GroupMessage[]> {
+    const response = await axiosClient.get<GroupMessage[]>(`/messages/${encodeURIComponent(groupId)}`);
+    return response.data;
+  },
+
+  async sendGroupMessage(groupId: string, message: string): Promise<GroupMessage> {
+    const response = await axiosClient.post<GroupMessage>(
+      `/messages/${encodeURIComponent(groupId)}`, { message }
+    );
     return response.data;
   },
 

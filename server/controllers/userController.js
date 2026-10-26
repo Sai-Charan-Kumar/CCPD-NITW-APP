@@ -15,7 +15,7 @@ exports.getStudentProfile = async (req, res) => {
     phone: user.phone || '',
     department: user.department,
     degree: 'B.Tech',
-    batch: '2026',
+    batch: user.batch || `20${user.email.slice(2, 4)}`,
     cgpa: user.cgpa || 0,
     activeBacklogs: user.activeBacklogs || 0,
     placementStatus: user.placementStatus,

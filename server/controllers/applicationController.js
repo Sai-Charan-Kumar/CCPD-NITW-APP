@@ -1,5 +1,6 @@
 const Application = require('../models/Application');
 const Drive = require('../models/Drive');
+const Notification = require('../models/Notification');
 const { toFrontend: driveToFrontend } = require('./driveController');
 
 const toFrontend = (application) => {
@@ -13,11 +14,20 @@ const toFrontend = (application) => {
     accentColor: drive.accentColor || '#2563EB',
     role: drive.role,
     appliedDate: a.appliedAt.toISOString(),
-    status: a.status === 'Applied' ? 'Application Submitted' : a.status === 'Interview' ? 'Interview In-Progress' : a.status === 'Offered' ? 'Offer Extended' : a.status === 'Rejected' ? 'Not Shortlisted' : a.status,
+    status: a.status === 'Applied' ? 'Application Submitted' : a.status === 'Shortlisted' ? 'Shortlisted for Final' : a.status === 'Interview' ? 'Interview In-Progress' : a.status === 'Offered' ? 'Offer Extended' : a.status === 'Rejected' ? 'Not Shortlisted' : a.status,
     currentRound: drive.currentPhase,
     salaryDisplay: drive.ctc.total,
     canWithdraw: a.status === 'Applied',
-    timeline: []
+    nextEventDate: a.nextEventDate ? a.nextEventDate.toISOString() : undefined,
+    timeline: a.nextEventDate ? [{
+      roundId: `${a._id}-next`,
+      roundName: drive.currentPhase,
+      status: 'scheduled',
+      date: a.nextEventDate.toISOString(),
+      time: a.nextEventTime,
+      locationOrLink: a.nextEventLocationOrLink,
+      instructions: a.nextEventInstructions
+    }] : []
   };
 };
 
@@ -58,5 +68,42 @@ exports.byDrive = async (req, res, next) => {
   try {
     const applications = await Application.find({ driveId: req.params.driveId }).populate('studentId', 'name email rollNumber department cgpa');
     return res.json(applications);
+  } catch (error) { return next(error); }
+};
+
+exports.publishShortlist = async (req, res, next) => {
+  try {
+    const drive = await Drive.findById(req.params.driveId);
+    if (!drive) return res.status(404).json({ message: 'Drive not found.' });
+    const identifiers = Array.isArray(req.body.identifiers) ? req.body.identifiers : [];
+    const csv = typeof req.body.csv === 'string' ? req.body.csv : '';
+    const csvIdentifiers = csv.split(/\r?\n/).flatMap((line) => line.split(',')).map((value) => value.trim()).filter(Boolean);
+    const allIdentifiers = [...new Set([...identifiers, ...csvIdentifiers].map((value) => String(value).toLowerCase().trim()).filter(Boolean))];
+    if (!allIdentifiers.length) return res.status(400).json({ message: 'Provide at least one student email, roll number, or CSV value.' });
+    const applications = await Application.find({ driveId: drive._id }).populate('studentId', 'email rollNumber name');
+    const selected = applications.filter((application) => {
+      const email = application.studentId.email.toLowerCase();
+      const rollNumber = String(application.studentId.rollNumber || '').toLowerCase();
+      return allIdentifiers.includes(email) || allIdentifiers.includes(rollNumber);
+    });
+    if (!selected.length) return res.status(404).json({ message: 'No matching applicants were found for the supplied identifiers.' });
+    const notes = typeof req.body.notes === 'string' ? req.body.notes.trim() : '';
+    await Application.updateMany(
+      { driveId: drive._id },
+      { status: 'Rejected', shortlistPublishedAt: new Date() }
+    );
+    await Application.updateMany(
+      { _id: { $in: selected.map((application) => application._id) } },
+      { status: 'Shortlisted', shortlistPublishedAt: new Date(), ...(notes ? { shortlistNotes: notes } : {}) }
+    );
+    await Notification.deleteMany({ driveId: drive._id, type: 'shortlist' });
+    await Notification.insertMany(selected.map((application) => ({
+      studentId: application.studentId._id,
+      title: `${drive.company} shortlist published`,
+      body: `You have been shortlisted for ${drive.currentPhase} at ${drive.company}. ${notes}`.trim(),
+      type: 'shortlist',
+      driveId: drive._id
+    })));
+    return res.json({ success: true, shortlistedCount: selected.length, rejectedCount: applications.length - selected.length });
   } catch (error) { return next(error); }
 };

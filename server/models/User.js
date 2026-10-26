@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['student', 'tnp', 'head'], default: 'student' },
     rollNumber: { type: String, trim: true },
     department: { type: String, trim: true },
+    batch: { type: String, trim: true },
     cgpa: { type: Number, min: 0, max: 10 },
     activeBacklogs: { type: Number, min: 0, default: 0 },
     tenthPercentage: { type: Number, min: 0, max: 100, default: 0 },

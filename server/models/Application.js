@@ -6,9 +6,15 @@ const applicationSchema = new mongoose.Schema(
     driveId: { type: mongoose.Schema.Types.ObjectId, ref: 'Drive', required: true },
     status: {
       type: String,
-      enum: ['Applied', 'OA Scheduled', 'Interview', 'Offered', 'Rejected'],
+      enum: ['Applied', 'Shortlisted', 'OA Scheduled', 'Interview', 'Offered', 'Rejected'],
       default: 'Applied'
     },
+    shortlistPublishedAt: Date,
+    shortlistNotes: { type: String, trim: true },
+    nextEventDate: Date,
+    nextEventTime: String,
+    nextEventLocationOrLink: String,
+    nextEventInstructions: String,
     appliedAt: { type: Date, default: Date.now }
   },
   { timestamps: true }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { ChevronDown, FileSpreadsheet, Mail, Upload } from 'lucide-react-native';
@@ -20,6 +20,8 @@ export const DriveAdminScreen: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [sendEmailAlso, setSendEmailAlso] = useState(false);
+  const [identifiers, setIdentifiers] = useState('');
+  const [csvContent, setCsvContent] = useState('');
 
   useEffect(() => {
     placementService.getDriveById(params.driveId).then((item) => {
@@ -34,14 +36,25 @@ export const DriveAdminScreen: React.FC = () => {
       copyToCacheDirectory: true,
       multiple: false,
     });
-    if (!result.canceled && result.assets[0]) setFileName(result.assets[0].name);
+    if (!result.canceled && result.assets[0]) {
+      setFileName(result.assets[0].name);
+      setCsvContent(await fetch(result.assets[0].uri).then((response) => response.text()));
+    }
   };
 
   const submit = async () => {
     setSaving(true);
     try {
       const result = await placementService.updateDriveAdmin(params.driveId, phase, fileName || undefined);
-      Alert.alert(result.success ? 'Drive updated' : 'Update failed', result.message);
+      let shortlistMessage = '';
+      const manualIdentifiers = identifiers.split(/[\s,;]+/).map((value) => value.trim()).filter(Boolean);
+      if (manualIdentifiers.length || csvContent) {
+        const shortlist = await placementService.publishShortlist(
+          params.driveId, manualIdentifiers, csvContent, broadcastMessage
+        );
+        shortlistMessage = ` ${shortlist.shortlistedCount} students shortlisted.`;
+      }
+      Alert.alert(result.success ? 'Drive updated' : 'Update failed', `${result.message}${shortlistMessage}`);
       if (result.success) navigation.goBack();
     } finally {
       setSaving(false);
@@ -50,7 +63,17 @@ export const DriveAdminScreen: React.FC = () => {
 
   if (!drive) return <View style={styles.center}><Text style={styles.muted}>Loading drive...</Text></View>;
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        showsVerticalScrollIndicator={false}
+      >
       <Text style={styles.company}>{drive.companyName}</Text>
       <Text style={styles.role}>{drive.role} · {drive.appliedCount} applicants</Text>
       <Text style={styles.label}>Current phase</Text>
@@ -66,6 +89,15 @@ export const DriveAdminScreen: React.FC = () => {
           <Upload size={17} color={COLORS.primaryAccent} /><Text style={styles.uploadButtonText}>Select Excel/CSV File</Text>
         </TouchableOpacity>
         {!!fileName && <Text style={styles.fileName}>{fileName}</Text>}
+        <TextInput
+          style={styles.textArea}
+          value={identifiers}
+          onChangeText={setIdentifiers}
+          placeholder="Or enter emails / roll numbers separated by commas"
+          placeholderTextColor={COLORS.textMuted}
+          selectionColor={COLORS.primaryAccent}
+          autoCapitalize="none"
+        />
       </View>
       <View style={styles.broadcastCard}>
         <Text style={styles.label}>Text Broadcast (Optional)</Text>
@@ -75,6 +107,7 @@ export const DriveAdminScreen: React.FC = () => {
           onChangeText={setBroadcastMessage}
           placeholder="Share a general update with this applicant group"
           placeholderTextColor={COLORS.textMuted}
+          selectionColor={COLORS.primaryAccent}
           multiline
           textAlignVertical="top"
         />
@@ -94,12 +127,14 @@ export const DriveAdminScreen: React.FC = () => {
       <TouchableOpacity style={styles.submit} onPress={submit} disabled={saving}>
         <Text style={styles.submitText}>{saving ? 'Updating...' : 'Update Drive & Filter Group'}</Text>
       </TouchableOpacity>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background, padding: SPACING.lg },
+  scrollContent: { paddingBottom: SPACING.xxxl },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   muted: { ...TYPOGRAPHY.body, color: COLORS.textMuted },
   company: { ...TYPOGRAPHY.h2, color: COLORS.textPrimary },
