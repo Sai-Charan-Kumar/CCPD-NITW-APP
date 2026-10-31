@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   LayoutDashboard,
   User,
+  Users,
 } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY } from '../constants/theme';
 import { StudentBottomTabParamList } from '../types';
@@ -56,7 +57,7 @@ export const StudentBottomTabs: React.FC = () => {
         options={{
           title: 'My Groups',
           tabBarLabel: 'Groups',
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
         }}
       />
       <Tab.Screen

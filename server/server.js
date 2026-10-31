@@ -17,9 +17,15 @@ app.use('/api/notices', require('./routes/noticeRoutes'));
 app.use('/api/stats', require('./routes/statsRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
+app.use('/api/groups', require('./routes/groupRoutes'));
+app.use('/api/interview-experiences', require('./routes/interviewExperienceRoutes'));
 app.use((error, req, res, next) => {
   console.error(error);
-  res.status(error.name === 'ValidationError' ? 400 : 500).json({ message: 'Server error.', details: error.message });
+  if (res.headersSent) return next(error);
+  const status = error.status
+    || (error.name === 'ValidationError' || error.name === 'CastError' ? 400 : 0)
+    || (error.code === 11000 ? 409 : 500);
+  return res.status(status).json({ message: 'Server error.', details: error.message });
 });
 
 const port = Number(process.env.PORT || 5000);

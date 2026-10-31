@@ -1,18 +1,13 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChevronRight, Users } from 'lucide-react-native';
 import { COLORS, RADIUS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
 import { DrivePhase, PlacementGroup, RootStackParamList } from '../types';
+import { placementService } from '../data/placementService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-const GROUPS: PlacementGroup[] = [
-  { id: 'GROUP-GOOGLE', companyName: 'Google', role: 'Software Development Engineer', currentPhase: 'OA', memberCount: 34 },
-  { id: 'GROUP-MICROSOFT', companyName: 'Microsoft', role: 'Product Engineer', currentPhase: 'Interview', memberCount: 18 },
-  { id: 'GROUP-QUALCOMM', companyName: 'Qualcomm', role: 'Embedded Systems Engineer', currentPhase: 'Final Selects', memberCount: 7 },
-];
 
 const phaseColor: Record<DrivePhase, string> = {
   OA: COLORS.primaryAccent,
@@ -22,13 +17,28 @@ const phaseColor: Record<DrivePhase, string> = {
 
 export const GroupsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const groups = useMemo(() => GROUPS, []);
+  const [groups, setGroups] = useState<PlacementGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        setGroups(await placementService.getMyGroups());
+      } catch (error) {
+        console.error('Failed to load placement groups', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadGroups();
+  }, []);
 
   return (
     <FlatList
       style={styles.container}
       contentContainerStyle={styles.content}
       data={groups}
+      refreshing={loading}
       keyExtractor={(group) => group.id}
       ListHeaderComponent={
         <View style={styles.header}>

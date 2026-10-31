@@ -36,7 +36,8 @@ const driveSchema = new mongoose.Schema(
     selectionRounds: { type: [mongoose.Schema.Types.Mixed], default: [] },
     companyLogo: String,
     accentColor: { type: String, default: '#2563EB' },
-    attachmentName: String
+    attachmentName: String,
+    appliedCount: { type: Number, min: 0, default: 0 }
   },
   { timestamps: true }
 );

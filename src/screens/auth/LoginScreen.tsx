@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { GraduationCap, Eye, EyeOff, UserCheck } from 'lucide-react-native';
+import { GraduationCap, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { AuthStackParamList } from '../../types';
@@ -39,12 +39,6 @@ export const LoginScreen: React.FC = () => {
     if (!result.success) {
       setErrorMessage(result.message || 'Login failed. Please check credentials.');
     }
-  };
-
-  const autofill = (demoEmail: string, demoPass = '1234') => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMessage('');
   };
 
   return (
@@ -83,7 +77,7 @@ export const LoginScreen: React.FC = () => {
             <Text style={styles.label}>Institute / Registered Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. student@test.com"
+              placeholder="Enter your registered email"
               placeholderTextColor={COLORS.textMuted}
               value={email}
               onChangeText={(text) => {
@@ -101,7 +95,7 @@ export const LoginScreen: React.FC = () => {
             <View style={styles.passwordContainer}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Enter password (default 1234)"
+                placeholder="Enter your password"
                 placeholderTextColor={COLORS.textMuted}
                 secureTextEntry={!showPassword}
                 value={password}
@@ -150,45 +144,6 @@ export const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Demo Credentials Helper Box */}
-        <View style={styles.helperCard}>
-          <View style={styles.helperHeader}>
-            <UserCheck size={16} color={COLORS.primaryAccent} />
-            <Text style={styles.helperTitle}>Quick Test Credentials (Tap to Autofill)</Text>
-          </View>
-          <Text style={styles.helperDesc}>
-            Switch roles instantly to test Student, TnP, or CCPD Head perspectives:
-          </Text>
-
-          <View style={styles.demoButtonsContainer}>
-            <TouchableOpacity
-              style={styles.demoPill}
-              onPress={() => autofill('student@test.com')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.demoRole}>STUDENT</Text>
-              <Text style={styles.demoEmail}>student@test.com (1234)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.demoPill}
-              onPress={() => autofill('tnp@test.com')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.demoRole}>TNP</Text>
-              <Text style={styles.demoEmail}>tnp@test.com (1234)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.demoPill}
-              onPress={() => autofill('head@test.com')}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.demoRole}>CCPD_HEAD</Text>
-              <Text style={styles.demoEmail}>head@test.com (1234)</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -322,53 +277,5 @@ const styles = StyleSheet.create({
   registerLinkBold: {
     color: COLORS.primaryAccent,
     fontWeight: '700',
-  },
-  helperCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.primaryAccent,
-  },
-  helperHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  helperTitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.primaryLight,
-    fontWeight: '700',
-  },
-  helperDesc: {
-    fontSize: 11,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-  },
-  demoButtonsContainer: {
-    gap: 6,
-  },
-  demoPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surfaceAlt,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 7,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  demoRole: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.primaryAccent,
-  },
-  demoEmail: {
-    fontSize: 11,
-    color: COLORS.textMuted,
   },
 });

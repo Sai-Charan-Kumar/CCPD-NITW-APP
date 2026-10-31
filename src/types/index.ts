@@ -13,6 +13,22 @@ export interface AuthUser {
   avatarUrl?: string;
 }
 
+export interface RegisteredStudent {
+  id: string;
+  name: string;
+  email: string;
+  rollNumber: string;
+  registrationNumber: string;
+  department: string;
+  batch: string;
+  cgpa: number;
+  phone: string;
+  placementStatus: PlacementStatus;
+  isVerifiedByCCPD: boolean;
+  registeredAt: string;
+  tnpAccess: boolean;
+}
+
 export type Department =
   | 'Computer Science & Engineering'
   | 'Electronics & Communication Engineering'
@@ -97,7 +113,7 @@ export interface SelectionRound {
   description: string;
 }
 
-export interface Drive {
+export interface PlacementDrive {
   id: string;
   companyName: string;
   requiredExtraDocs: string[];
@@ -128,8 +144,6 @@ export type DrivePhase =
   | 'OA'
   | 'Interview'
   | 'Final Selects';
-
-export type PlacementDrive = Drive;
 
 export interface PlacementGroup {
   id: string;
@@ -279,16 +293,6 @@ export interface PlacementStatistics {
     averagePackage: string;
     highestPackage: string;
   }[];
-}
-
-export interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  timestamp: string;
-  type: 'drive' | 'shortlist' | 'interview' | 'general';
-  isRead: boolean;
-  relatedId?: string;
 }
 
 // Navigation Param Lists

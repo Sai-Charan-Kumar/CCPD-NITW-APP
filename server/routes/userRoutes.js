@@ -1,7 +1,11 @@
 const router = require('express').Router();
 const auth = require('../middleware/authMiddleware');
 const controller = require('../controllers/userController');
+const allowRoles = require('../middleware/roleMiddleware');
 router.use(auth);
 router.get('/me', controller.getMe);
 router.get('/profile', controller.getStudentProfile);
+router.put('/profile', controller.updateStudentProfile);
+router.get('/registered-students', allowRoles('head'), controller.listRegisteredStudents);
+router.put('/:id/tnp-access', allowRoles('head'), controller.updateTnpAccess);
 module.exports = router;

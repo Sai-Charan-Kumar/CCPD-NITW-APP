@@ -6,6 +6,8 @@ import {
   InterviewExperience,
   Notice,
   PlacementDrive,
+  PlacementGroup,
+  RegisteredStudent,
   PlacementStatistics,
   StudentInterviewRecord,
   StudentProfile,
@@ -21,8 +23,17 @@ export const placementService = {
     return response.data;
   },
 
-  updateStudentIdentity(_input: Pick<StudentProfile, 'name' | 'rollNumber' | 'email' | 'department' | 'cgpa'>): void {
-    // Identity is owned by the authenticated backend user and updated through account APIs.
+  async getRegisteredStudents(): Promise<RegisteredStudent[]> {
+    const response = await axiosClient.get<RegisteredStudent[]>('/users/registered-students');
+    return response.data;
+  },
+
+  async updateTnpAccess(id: string, enabled: boolean): Promise<void> {
+    await axiosClient.put(`/users/${id}/tnp-access`, { enabled });
+  },
+
+  async updateProfile(input: { name?: string; phone?: string; resume?: { fileName: string; url: string } }): Promise<void> {
+    await axiosClient.put('/users/profile', input);
   },
 
   checkEligibility(student: StudentProfile, drive: PlacementDrive) {
@@ -98,13 +109,15 @@ export const placementService = {
   },
 
   async getNotices(category?: string): Promise<Notice[]> {
-    const response = await axiosClient.get<Notice[]>('/notices');
-    return !category || category === 'All' ? response.data : response.data.filter((notice) => notice.category === category);
+    const response = await axiosClient.get<Notice[]>('/notices', {
+      params: category && category !== 'All' ? { category } : undefined,
+    });
+    return response.data;
   },
 
   async getNoticeById(id: string): Promise<Notice | undefined> {
-    const notices = await this.getNotices();
-    return notices.find((notice) => notice.id === id);
+    const response = await axiosClient.get<Notice[]>('/notices', { params: { id } });
+    return response.data[0];
   },
 
   async getUnreadNoticesCount(): Promise<number> {
@@ -142,6 +155,11 @@ export const placementService = {
     return response.data;
   },
 
+  async getMyGroups(): Promise<PlacementGroup[]> {
+    const response = await axiosClient.get<PlacementGroup[]>('/groups/my-groups');
+    return response.data;
+  },
+
   async sendGroupMessage(groupId: string, message: string): Promise<GroupMessage> {
     const response = await axiosClient.post<GroupMessage>(
       `/messages/${encodeURIComponent(groupId)}`, { message }
@@ -150,11 +168,12 @@ export const placementService = {
   },
 
   async getInterviewExperiences(): Promise<InterviewExperience[]> {
-    return [];
+    const response = await axiosClient.get<InterviewExperience[]>('/interview-experiences');
+    return response.data;
   },
 
   async getInterviewExperienceById(_id: string): Promise<InterviewExperience | undefined> {
-    return undefined;
+    throw new Error('Not implemented');
   },
 
   async getStudentInterviewHistory(studentId: string): Promise<StudentInterviewRecord[]> {

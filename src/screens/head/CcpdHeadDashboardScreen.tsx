@@ -22,13 +22,15 @@ import {
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../../constants/theme';
 import { placementService } from '../../data/placementService';
-import { PlacementStatistics } from '../../types';
+import { PlacementStatistics, RegisteredStudent } from '../../types';
 
 const AUDIENCES = ['All Students (UG & PG)', 'All 4th Years (Batch 2026)', 'All TnPs & Coordinators', 'CSE & ECE Only'];
 
 export const CcpdHeadDashboardScreen: React.FC = () => {
   const [stats, setStats] = useState<PlacementStatistics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<RegisteredStudent[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(true);
 
   // Global Notice Broadcast State
   const [noticeTitle, setNoticeTitle] = useState('');
@@ -52,6 +54,30 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
     }
     loadStats();
   }, []);
+
+  useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        setStudents(await placementService.getRegisteredStudents());
+      } catch (err) {
+        console.error('Failed to load registered students', err);
+      } finally {
+        setStudentsLoading(false);
+      }
+    };
+    void loadStudents();
+  }, []);
+
+  const handleTnpAccessChange = async (student: RegisteredStudent, enabled: boolean) => {
+    try {
+      await placementService.updateTnpAccess(student.id, enabled);
+      setStudents((current) => current.map((item) => (
+        item.id === student.id ? { ...item, tnpAccess: enabled } : item
+      )));
+    } catch (error) {
+      Alert.alert('Unable to update T&P access', error instanceof Error ? error.message : 'Please try again.');
+    }
+  };
 
   const handleSendGlobalNotice = async () => {
     if (!noticeTitle.trim() || !noticeMessage.trim()) {
@@ -207,6 +233,36 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
             <Text style={styles.recruiterCtc}>{r.highestPackage}</Text>
           </View>
         ))}
+      </View>
+
+      <View style={[styles.sectionCard, SHADOWS.card]}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Registered Students & T&P Access</Text>
+        </View>
+        {studentsLoading ? (
+          <ActivityIndicator size="small" color={COLORS.purple} />
+        ) : students.length === 0 ? (
+          <Text style={styles.emptyText}>No registered students found.</Text>
+        ) : (
+          students.map((student) => (
+            <View key={student.id} style={styles.studentRow}>
+              <View style={styles.studentInfo}>
+                <Text style={styles.studentName}>{student.name}</Text>
+                <Text style={styles.studentMeta}>{student.email} • {student.department || 'Department pending'}</Text>
+                <Text style={styles.studentMeta}>Roll No: {student.rollNumber || 'Not provided'} • CGPA: {student.cgpa.toFixed(2)}</Text>
+              </View>
+              <View style={styles.accessControl}>
+                <Text style={styles.accessLabel}>{student.tnpAccess ? 'T&P' : 'Student'}</Text>
+                <Switch
+                  value={student.tnpAccess}
+                  onValueChange={(enabled) => void handleTnpAccessChange(student, enabled)}
+                  trackColor={{ false: COLORS.border, true: COLORS.purple }}
+                  thumbColor={COLORS.surface}
+                />
+              </View>
+            </View>
+          ))
+        )}
       </View>
 
       {/* Target Audience Modal */}
@@ -457,6 +513,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     flex: 1.5,
     textAlign: 'right',
+  },
+  studentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.surfaceAlt,
+  },
+  studentInfo: {
+    flex: 1,
+    marginRight: SPACING.sm,
+  },
+  studentName: {
+    ...TYPOGRAPHY.bodyBold,
+    color: COLORS.textPrimary,
+  },
+  studentMeta: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  accessControl: {
+    alignItems: 'center',
+  },
+  accessLabel: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.purple,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  emptyText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textMuted,
   },
   modalOverlay: {
     flex: 1,

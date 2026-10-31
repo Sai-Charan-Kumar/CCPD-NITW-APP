@@ -20,7 +20,9 @@ const publicUser = (user) => ({
   rollNumber: user.rollNumber,
   department: user.department,
   cgpa: user.cgpa,
-  phone: user.phone
+  phone: user.phone,
+  designation: user.designation,
+  avatarUrl: user.avatarUrl
 });
 
 const issueToken = (user) =>
@@ -92,7 +94,8 @@ exports.verifyRegistration = async (req, res, next) => {
     const user = await User.create({
       name: pending.name, email: pending.email, passwordHash: pending.passwordHash,
       rollNumber: pending.rollNumber, department: pending.department, cgpa: pending.cgpa,
-      batch: `20${pending.email.slice(2, 4)}`, role: 'student'
+      registrationNumber: pending.rollNumber,
+      batch: `20${pending.email.slice(2, 4)}`, role: 'student', degree: 'B.Tech'
     });
     await pending.deleteOne();
     return res.status(201).json({ token: issueToken(user), user: publicUser(user) });

@@ -122,15 +122,15 @@ export const HomeScreen: React.FC = () => {
         <View style={[styles.statsGrid, { marginTop: SPACING.sm }]}>
           <StatCard
             label="Shortlists"
-            value="2"
-            subtitle="Microsoft & Google"
+            value="--"
+            subtitle="Pending API data"
             icon={<Award size={20} color={COLORS.purple} />}
             accentColor={COLORS.purple}
           />
           <StatCard
             label="Highest Package"
-            value="54.5 L"
-            subtitle="Batch 2026 Record"
+            value="--"
+            subtitle="Pending API data"
             icon={<TrendingUp size={20} color={COLORS.success} />}
             accentColor={COLORS.success}
             onPress={() => navigation.navigate('PlacementStats')}

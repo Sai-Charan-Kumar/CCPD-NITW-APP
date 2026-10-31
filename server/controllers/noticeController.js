@@ -17,7 +17,10 @@ const toFrontend = (notice) => ({
 
 exports.list = async (req, res, next) => {
   try {
-    const notices = await Notice.find().sort({ createdAt: -1 });
+    const filter = {};
+    if (req.query.id) filter._id = req.query.id;
+    if (req.query.category && req.query.category !== 'All') filter.category = req.query.category;
+    const notices = await Notice.find(filter).sort({ createdAt: -1 });
     return res.json(notices.map(toFrontend));
   } catch (error) { return next(error); }
 };

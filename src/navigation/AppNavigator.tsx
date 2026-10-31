@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { AuthNavigator } from './AuthNavigator';
 import { StudentBottomTabs } from './StudentBottomTabs';
+import { TnpTabNavigator } from './TnpTabNavigator';
 import { HeadTabNavigator } from './HeadTabNavigator';
 import { JobDetailScreen } from '../screens/JobDetailScreen';
 import { ApplicationDetailScreen } from '../screens/ApplicationDetailScreen';
@@ -33,6 +34,7 @@ export const AppNavigator: React.FC = () => {
       case 'CCPD_HEAD':
         return HeadTabNavigator;
       case 'TNP':
+        return TnpTabNavigator;
       case 'STUDENT':
       default:
         return StudentBottomTabs;

@@ -84,7 +84,7 @@ export const DriveAdminScreen: React.FC = () => {
       <View style={styles.uploadCard}>
         <FileSpreadsheet size={24} color={COLORS.primaryAccent} />
         <Text style={styles.uploadTitle}>Upload Shortlisted Students</Text>
-        <Text style={styles.helper}>Upload the company&apos;s shortlist. Unlisted students will be automatically removed from the applicant group.</Text>
+        <Text style={styles.helper}>Upload the company{"'"}s shortlist. Unlisted students will be automatically removed from the applicant group.</Text>
         <TouchableOpacity style={styles.uploadButton} onPress={selectFile}>
           <Upload size={17} color={COLORS.primaryAccent} /><Text style={styles.uploadButtonText}>Select Excel/CSV File</Text>
         </TouchableOpacity>

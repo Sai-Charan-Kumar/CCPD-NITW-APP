@@ -1,4 +1,4 @@
-const GroupMessage = require('../models/GroupMessage');
+const Message = require('../models/Message');
 
 const toFrontend = (message) => ({
   id: message._id.toString(),
@@ -11,7 +11,7 @@ const toFrontend = (message) => ({
 
 exports.list = async (req, res, next) => {
   try {
-    const messages = await GroupMessage.find({ groupId: req.params.groupId })
+    const messages = await Message.find({ groupId: req.params.groupId })
       .populate('senderId', 'name role')
       .sort({ createdAt: 1 })
       .limit(200);
@@ -25,7 +25,7 @@ exports.create = async (req, res, next) => {
   try {
     const message = typeof req.body.message === 'string' ? req.body.message.trim() : '';
     if (!message) return res.status(400).json({ message: 'Message cannot be empty.' });
-    const created = await GroupMessage.create({
+    const created = await Message.create({
       groupId: req.params.groupId,
       senderId: req.user._id,
       message
