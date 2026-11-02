@@ -136,7 +136,7 @@ export const RegisterScreen: React.FC = () => {
                 <Text style={styles.label}>Verification OTP</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="123456"
+                  placeholder="Enter the 6-digit OTP"
                   placeholderTextColor={COLORS.textMuted}
                   selectionColor={COLORS.primaryAccent}
                   keyboardType="number-pad"

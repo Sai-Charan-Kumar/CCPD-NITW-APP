@@ -5,5 +5,7 @@ const controller = require('../controllers/driveController');
 router.get('/', controller.list);
 router.get('/:id', controller.getById);
 router.post('/', auth, allowRoles('tnp', 'head'), controller.create);
+router.put('/:id', auth, allowRoles('tnp', 'head'), controller.update);
+router.delete('/:id', auth, allowRoles('tnp', 'head'), controller.remove);
 router.put('/:id/phase', auth, allowRoles('tnp', 'head'), controller.updatePhase);
 module.exports = router;

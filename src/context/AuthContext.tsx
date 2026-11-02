@@ -12,9 +12,13 @@ export interface RegisterPayload {
   password?: string;
 }
 
+export type TnpMode = 'student' | 'tnp';
+
 interface AuthContextType {
   currentUser: AuthUser | null;
   isLoading: boolean;
+  tnpMode: TnpMode;
+  setTnpMode: (mode: TnpMode) => void;
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (payload: RegisterPayload) => Promise<{ success: boolean; message?: string; requiresVerification?: boolean; email?: string }>;
   verifyRegistration: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
@@ -26,6 +30,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [tnpMode, setTnpModeState] = useState<TnpMode>('student');
+
+  const setTnpMode = (mode: TnpMode) => {
+    setTnpModeState(mode);
+  };
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -37,6 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const response = await axiosClient.get<{ user: AuthUser }>('/users/me');
         setCurrentUser(response.data.user);
+        setTnpModeState('student');
       } catch {
         await AsyncStorage.removeItem('ccpd_token');
         setCurrentUser(null);
@@ -101,7 +111,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, isLoading, login, register, verifyRegistration, logout }}>
+    <AuthContext.Provider value={{ currentUser, isLoading, tnpMode, setTnpMode, login, register, verifyRegistration, logout }}>
       {children}
     </AuthContext.Provider>
   );

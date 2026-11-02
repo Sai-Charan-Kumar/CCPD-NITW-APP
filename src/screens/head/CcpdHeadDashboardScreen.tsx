@@ -24,9 +24,15 @@ import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY }
 import { placementService } from '../../data/placementService';
 import { PlacementStatistics, RegisteredStudent } from '../../types';
 
-const AUDIENCES = ['All Students (UG & PG)', 'All 4th Years (Batch 2026)', 'All TnPs & Coordinators', 'CSE & ECE Only'];
+const AUDIENCES = [
+  'All Students (UG & PG)',
+  `All 4th Years (Batch ${new Date().getFullYear()})`,
+  'All TnPs & Coordinators',
+  'CSE & ECE Only',
+];
 
 export const CcpdHeadDashboardScreen: React.FC = () => {
+  const currentYear = new Date().getFullYear();
   const [stats, setStats] = useState<PlacementStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<RegisteredStudent[]>([]);
@@ -157,7 +163,7 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
         <Text style={styles.inputLabel}>Notice Title *</Text>
         <TextInput
           style={styles.input}
-          placeholder="e.g. Mandatory Pre-Placement Briefing for 2026 Graduating Batch"
+          placeholder={`e.g. Mandatory Pre-Placement Briefing for ${currentYear} Graduating Batch`}
           placeholderTextColor={COLORS.textMuted}
           value={noticeTitle}
           onChangeText={setNoticeTitle}
@@ -403,6 +409,176 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: SPACING.sm,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingRight: 42,
+    height: 48,
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textPrimary,
+  },
+  clearSearchBtn: {
+    position: 'absolute',
+    right: SPACING.md,
+    width: 28,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchHint: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textMuted,
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.sm,
+  },
+  permissionNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.tealLight,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.lg,
+    gap: SPACING.sm,
+  },
+  permissionText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.successDark,
+    flex: 1,
+  },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.successLight,
+    borderWidth: 1,
+    borderColor: COLORS.successBorder,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  successText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.successDark,
+    fontWeight: '600',
+    flex: 1,
+  },
+  candidateAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primarySoft,
+  },
+  candidateAvatarText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.primaryAccent,
+    fontWeight: '700',
+  },
+  candidateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.surfaceAlt,
+  },
+  candidateInfo: {
+    flex: 1,
+  },
+  candidateName: {
+    ...TYPOGRAPHY.bodyBold,
+    color: COLORS.textPrimary,
+  },
+  candidateMeta: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  promoteBtn: {
+    backgroundColor: COLORS.primaryAccent,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    minWidth: 76,
+    alignItems: 'center',
+  },
+  promoteBtnText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textInverse,
+    fontWeight: '700',
+  },
+  noCandidatesText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textMuted,
+    flex: 1,
+  },
+  rosterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: SPACING.lg,
+    marginTop: SPACING.md,
+  },
+  rosterTitle: {
+    ...TYPOGRAPHY.bodyBold,
+    color: COLORS.textPrimary,
+  },
+  rosterSubtitle: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  refreshText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primaryAccent,
+    fontWeight: '700',
+  },
+  coordinatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingVertical: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.surfaceAlt,
+  },
+  tnpBadge: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.teal,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  removeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.dangerLight,
+    borderWidth: 1,
+    borderColor: COLORS.dangerBorder,
+  },
+  emptySearchState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.sm,
+    padding: SPACING.md,
+  },
   dropdownBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -482,6 +658,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: SPACING.md,
+  },
+  coordinatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  coordinatorIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.tealLight,
+    marginRight: SPACING.md,
+  },
+  coordinatorHeaderText: {
+    flex: 1,
   },
   sectionTitle: {
     ...TYPOGRAPHY.h4,

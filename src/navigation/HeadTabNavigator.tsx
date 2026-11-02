@@ -5,6 +5,7 @@ import {
   Briefcase,
   TrendingUp,
   User,
+  UserPlus,
 } from 'lucide-react-native';
 import { COLORS, TYPOGRAPHY } from '../constants/theme';
 import { HeadTabParamList } from '../types';
@@ -13,6 +14,7 @@ import { DrivesScreen } from '../screens/DrivesScreen';
 import { PlacementStatsScreen } from '../screens/PlacementStatsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { FloatingTabBar } from '../components/FloatingTabBar';
+import { TnpManagementScreen } from '../screens/head/TnpManagementScreen';
 
 const Tab = createBottomTabNavigator<HeadTabParamList>();
 
@@ -51,6 +53,15 @@ export const HeadTabNavigator: React.FC = () => {
           title: 'Executive Directorate',
           tabBarLabel: 'Executive',
           tabBarIcon: ({ color, size }) => <LayoutDashboard size={size} color={color} />,
+        }}
+      />
+      <Tab.Screen
+        name="TnpManagement"
+        component={TnpManagementScreen}
+        options={{
+          title: 'TNP Coordinators',
+          tabBarLabel: 'TNPs',
+          tabBarIcon: ({ color, size }) => <UserPlus size={size} color={color} />,
         }}
       />
       <Tab.Screen

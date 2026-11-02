@@ -1,10 +1,12 @@
 const Application = require('../models/Application');
 const Drive = require('../models/Drive');
 const Notification = require('../models/Notification');
+const { toFrontend: driveToFrontend } = require('./driveController');
+const groupController = require('./groupController');
+
 const toFrontend = (application) => {
-  const a = application.toObject ? application.toObject() : application;
+  const a = application.toObject();
   const drive = a.driveId;
-  if (!drive || !drive._id) throw new Error('Application drive data is unavailable.');
   return {
     id: a._id.toString(),
     driveId: drive._id.toString(),
@@ -49,11 +51,8 @@ exports.apply = async (req, res, next) => {
     try {
       const application = await Application.create({ studentId: student._id, driveId: drive._id });
       await Drive.updateOne({ _id: drive._id }, { $inc: { appliedCount: 1 } });
-      return res.status(201).json({
-        success: true,
-        message: `Successfully applied to ${drive.company}.`,
-        application: toFrontend({ ...application.toObject(), driveId: drive })
-      });
+      await groupController.addMember(drive._id, student._id);
+      return res.status(201).json({ success: true, message: `Successfully applied to ${drive.company}.`, application: toFrontend({ ...application.toObject(), driveId: drive }) });
     } catch (error) {
       if (error.code === 11000) return res.status(409).json({ message: 'You have already applied to this drive.' });
       throw error;

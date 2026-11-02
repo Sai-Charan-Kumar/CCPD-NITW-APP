@@ -19,17 +19,25 @@ import {
   Users,
   Briefcase,
   Plus,
+  Pencil,
+  Trash2,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme';
 import { placementService } from '../../data/placementService';
-import { PlacementDrive, RootStackParamList } from '../../types';
+import { useAuth } from '../../context/AuthContext';
+import { PlacementDrive, RootStackParamList, StudentProfile } from '../../types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Header } from '../../components/Header';
+import { getApiErrorMessage } from '../../api/axiosClient';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const TnpDriveManagementScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { currentUser, setTnpMode } = useAuth();
   const [drives, setDrives] = useState<PlacementDrive[]>([]);
+  const [student, setStudent] = useState<StudentProfile | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Broadcast Tool State
@@ -39,12 +47,24 @@ export const TnpDriveManagementScreen: React.FC = () => {
   const [sendEmailAlso, setSendEmailAlso] = useState(false);
   const [sending, setSending] = useState(false);
 
+  const loadDrives = async () => {
+    const data = await placementService.getDrives();
+    setDrives(data);
+    setSelectedDriveId((current) => current && data.some((drive) => drive.id === current) ? current : data[0]?.id || '');
+  };
+
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const data = await placementService.getDrives();
+        const [data, studentData, unread] = await Promise.all([
+          placementService.getDrives(),
+          placementService.getStudentProfile(),
+          placementService.getUnreadNoticesCount(),
+        ]);
         setDrives(data);
+        setStudent(studentData);
+        setUnreadCount(unread);
         if (data.length > 0) {
           setSelectedDriveId(data[0].id);
         }
@@ -56,6 +76,29 @@ export const TnpDriveManagementScreen: React.FC = () => {
     }
     loadData();
   }, []);
+
+  const handleDeleteDrive = (drive: PlacementDrive) => {
+    Alert.alert(
+      'Delete drive?',
+      `This will permanently remove ${drive.companyName} - ${drive.role}.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await placementService.deleteDrive(drive.id);
+              await loadDrives();
+              Alert.alert('Drive deleted', 'The drive has been removed.');
+            } catch (error) {
+              Alert.alert('Could not delete drive', getApiErrorMessage(error));
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleSendAnnouncement = async () => {
     if (!broadcastMessage.trim()) {
@@ -96,11 +139,23 @@ export const TnpDriveManagementScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={styles.screen}>
+      {student && (
+        <Header
+          student={student}
+          currentUser={currentUser}
+          unreadCount={unreadCount}
+          onPressNotifications={() => navigation.navigate('Notifications')}
+        />
+      )}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+      <TouchableOpacity style={styles.modeButton} onPress={() => setTnpMode('student')}>
+        <Text style={styles.modeButtonText}>Switch to user mode</Text>
+      </TouchableOpacity>
       {/* Broadcast Tool Section */}
       <View style={[styles.broadcastCard, SHADOWS.card]}>
         <View style={styles.broadcastHeader}>
@@ -201,11 +256,9 @@ export const TnpDriveManagementScreen: React.FC = () => {
         </View>
 
         {drives.map((drive) => (
-          <TouchableOpacity
+          <View
             key={drive.id}
             style={styles.driveRow}
-            onPress={() => navigation.navigate('DriveAdmin', { driveId: drive.id })}
-            activeOpacity={0.75}
           >
             <View style={styles.driveMain}>
               <Text style={styles.driveCompanyName}>{drive.companyName}</Text>
@@ -220,7 +273,29 @@ export const TnpDriveManagementScreen: React.FC = () => {
               <Users size={14} color={COLORS.primaryAccent} />
               <Text style={styles.driveApplicantsCount}>{drive.appliedCount} Applied</Text>
             </View>
-          </TouchableOpacity>
+            <View style={styles.driveActions}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => navigation.navigate('CreateDrive', { driveId: drive.id })}
+                accessibilityLabel={`Edit ${drive.companyName} drive`}
+              >
+                <Pencil size={16} color={COLORS.primaryAccent} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iconButton, styles.deleteButton]}
+                onPress={() => handleDeleteDrive(drive)}
+                accessibilityLabel={`Delete ${drive.companyName} drive`}
+              >
+                <Trash2 size={16} color={COLORS.danger} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.manageLink}
+                onPress={() => navigation.navigate('DriveAdmin', { driveId: drive.id })}
+              >
+                <Text style={styles.manageLinkText}>Manage</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         ))}
       </View>
       <TouchableOpacity
@@ -231,11 +306,16 @@ export const TnpDriveManagementScreen: React.FC = () => {
         <Plus size={20} color={COLORS.textInverse} />
         <Text style={styles.createButtonText}>Create New Drive</Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -244,6 +324,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modeButton: {
+    alignSelf: 'flex-end',
+    backgroundColor: COLORS.surfaceAlt,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  modeButtonText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primaryAccent,
+    fontWeight: '700',
   },
   scrollContent: {
     padding: SPACING.lg,
@@ -432,6 +527,32 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: RADIUS.full,
     gap: 4,
+  },
+  driveActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.sm,
+  },
+  iconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primarySoft,
+  },
+  deleteButton: {
+    backgroundColor: COLORS.dangerLight,
+  },
+  manageLink: {
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  manageLinkText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primaryAccent,
+    fontWeight: '700',
   },
   driveApplicantsCount: {
     fontSize: 11,

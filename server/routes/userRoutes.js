@@ -1,11 +1,15 @@
 const router = require('express').Router();
 const auth = require('../middleware/authMiddleware');
-const controller = require('../controllers/userController');
 const allowRoles = require('../middleware/roleMiddleware');
+const controller = require('../controllers/userController');
 router.use(auth);
 router.get('/me', controller.getMe);
 router.get('/profile', controller.getStudentProfile);
 router.put('/profile', controller.updateStudentProfile);
 router.get('/registered-students', allowRoles('head'), controller.listRegisteredStudents);
 router.put('/:id/tnp-access', allowRoles('head'), controller.updateTnpAccess);
+router.get('/coordinators', allowRoles('head'), controller.listCoordinators);
+router.get('/coordinator-candidates', allowRoles('head'), controller.searchStudentsForCoordinator);
+router.patch('/coordinator-candidates/:id/promote', allowRoles('head'), controller.promoteStudentToCoordinator);
+router.patch('/coordinators/:id/demote', allowRoles('head'), controller.demoteCoordinator);
 module.exports = router;

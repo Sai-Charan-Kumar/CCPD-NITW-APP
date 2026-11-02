@@ -1,19 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronRight, Users } from 'lucide-react-native';
+import { Users } from 'lucide-react-native';
 import { COLORS, RADIUS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
-import { DrivePhase, PlacementGroup, RootStackParamList } from '../types';
 import { placementService } from '../data/placementService';
+import { PlacementGroup, RootStackParamList } from '../types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-const phaseColor: Record<DrivePhase, string> = {
-  OA: COLORS.primaryAccent,
-  Interview: COLORS.purple,
-  'Final Selects': COLORS.success,
-};
 
 export const GroupsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -21,50 +15,41 @@ export const GroupsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadGroups = async () => {
-      try {
-        setGroups(await placementService.getMyGroups());
-      } catch (error) {
-        console.error('Failed to load placement groups', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void loadGroups();
+    placementService.getMyGroups()
+      .then(setGroups)
+      .catch((error) => console.error('Failed to load placement groups', error))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
-    <FlatList
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      data={groups}
-      refreshing={loading}
-      keyExtractor={(group) => group.id}
-      ListHeaderComponent={
+    <View style={styles.container}>
+      <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>My Placement Groups</Text>
-          <Text style={styles.subtitle}>Text announcements and group updates from TnP coordinators.</Text>
+          <Text style={styles.subtitle}>Groups assigned by TNP coordinators will appear here.</Text>
         </View>
-      }
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => navigation.navigate('GroupChat', { groupId: item.id, companyName: item.companyName })}
-          activeOpacity={0.8}
-        >
-          <View style={styles.icon}><Users size={21} color={COLORS.primaryAccent} /></View>
-          <View style={styles.details}>
-            <Text style={styles.company}>{item.companyName}</Text>
-            <Text style={styles.role}>{item.role}</Text>
-            <View style={[styles.phaseBadge, { backgroundColor: `${phaseColor[item.currentPhase]}18` }]}>
-              <Text style={[styles.phaseText, { color: phaseColor[item.currentPhase] }]}>Phase: {item.currentPhase}</Text>
+        {loading && <ActivityIndicator size="large" color={COLORS.primaryAccent} />}
+        {!loading && groups.map((group) => (
+          <Pressable
+            key={group.id}
+            style={styles.groupCard}
+            onPress={() => navigation.navigate('GroupChat', { groupId: group.groupId, companyName: group.companyName })}
+          >
+            <View style={styles.icon}><Users size={21} color={COLORS.primaryAccent} /></View>
+            <View style={styles.groupDetails}>
+              <Text style={styles.groupTitle}>{group.companyName}</Text>
+              <Text style={styles.groupRole}>{group.role}</Text>
+              <Text style={styles.groupMeta}>{group.memberCount} member{group.memberCount === 1 ? '' : 's'} · {group.currentPhase}</Text>
             </View>
-            <Text style={styles.members}>{item.memberCount} students</Text>
-          </View>
-          <ChevronRight size={19} color={COLORS.textMuted} />
-        </TouchableOpacity>
-      )}
-    />
+          </Pressable>
+        ))}
+        {!loading && groups.length === 0 && <View style={styles.emptyCard}>
+          <View style={styles.icon}><Users size={21} color={COLORS.textMuted} /></View>
+          <Text style={styles.emptyTitle}>No groups assigned</Text>
+          <Text style={styles.emptyText}>You will see company-specific placement groups here when you are added to one.</Text>
+        </View>}
+      </View>
+    </View>
   );
 };
 
@@ -74,12 +59,13 @@ const styles = StyleSheet.create({
   header: { marginBottom: SPACING.md },
   title: { ...TYPOGRAPHY.h2, color: COLORS.textPrimary },
   subtitle: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: SPACING.xs },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.md, marginBottom: SPACING.md, borderWidth: 1, borderColor: COLORS.border },
   icon: { width: 44, height: 44, borderRadius: RADIUS.md, backgroundColor: COLORS.primarySoft, alignItems: 'center', justifyContent: 'center', marginRight: SPACING.md },
-  details: { flex: 1 },
-  company: { ...TYPOGRAPHY.h4, color: COLORS.textPrimary },
-  role: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: 2 },
-  phaseBadge: { alignSelf: 'flex-start', borderRadius: RADIUS.full, paddingHorizontal: SPACING.sm, paddingVertical: 3, marginTop: SPACING.sm },
-  phaseText: { fontSize: 11, fontWeight: '700' },
-  members: { ...TYPOGRAPHY.caption, marginTop: SPACING.xs },
+  emptyCard: { alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.xxl, borderWidth: 1, borderColor: COLORS.border },
+  groupCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: SPACING.lg, borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.md },
+  groupDetails: { flex: 1 },
+  groupTitle: { ...TYPOGRAPHY.h4, color: COLORS.textPrimary },
+  groupRole: { ...TYPOGRAPHY.bodySmall, color: COLORS.textSecondary, marginTop: 2 },
+  groupMeta: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, marginTop: SPACING.xs },
+  emptyTitle: { ...TYPOGRAPHY.h4, color: COLORS.textPrimary, marginTop: SPACING.md },
+  emptyText: { ...TYPOGRAPHY.bodySmall, color: COLORS.textMuted, textAlign: 'center', marginTop: SPACING.xs },
 });

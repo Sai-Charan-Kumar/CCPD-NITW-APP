@@ -6,6 +6,7 @@ export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost
 export const axiosClient = create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 15000,
 });
 
 axiosClient.interceptors.request.use(async (config) => {

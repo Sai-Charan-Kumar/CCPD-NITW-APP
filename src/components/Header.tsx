@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bell, GraduationCap } from 'lucide-react-native';
+import { Bell, Repeat2 } from 'lucide-react-native';
 import { COLORS, SPACING, RADIUS, TYPOGRAPHY } from '../constants/theme';
 import { AuthUser, StudentProfile } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface HeaderProps {
   student: StudentProfile;
@@ -23,6 +24,8 @@ export const Header: React.FC<HeaderProps> = ({
   onPressManageDrives,
 }) => {
   const insets = useSafeAreaInsets();
+  const { tnpMode, setTnpMode } = useAuth();
+  const isTnp = currentUser?.role === 'TNP';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + SPACING.sm }]}>
@@ -53,14 +56,14 @@ export const Header: React.FC<HeaderProps> = ({
           </Text>
         </View>
       </TouchableOpacity>
-      {currentUser?.role === 'TNP' && (
+      {isTnp && (
         <TouchableOpacity
           style={styles.manageBtn}
-          onPress={onPressManageDrives}
-          accessibilityLabel="Manage Drives"
+          onPress={() => setTnpMode(tnpMode === 'tnp' ? 'student' : 'tnp')}
+          accessibilityLabel={tnpMode === 'tnp' ? 'Switch to student mode' : 'Switch to TNP mode'}
           activeOpacity={0.7}
         >
-          <GraduationCap size={19} color={COLORS.primaryAccent} />
+          <Repeat2 size={19} color={COLORS.primaryAccent} />
         </TouchableOpacity>
       )}
 

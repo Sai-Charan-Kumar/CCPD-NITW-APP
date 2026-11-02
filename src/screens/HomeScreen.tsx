@@ -12,7 +12,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   Briefcase,
   FileCheck2,
-  Award,
   TrendingUp,
   BookOpen,
 } from 'lucide-react-native';
@@ -29,7 +28,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { currentUser } = useAuth();
+  const { currentUser, tnpMode } = useAuth();
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [drives, setDrives] = useState<PlacementDrive[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -42,7 +41,9 @@ export const HomeScreen: React.FC = () => {
       const studentData = await placementService.getStudentProfile();
       const allDrives = await placementService.getDrives();
       const allNotices = await placementService.getNotices();
-      const applications = await placementService.getApplications();
+      const applications = currentUser?.role === 'STUDENT' || tnpMode === 'student'
+        ? await placementService.getApplications()
+        : [];
       const unread = await placementService.getUnreadNoticesCount();
 
       setStudent(studentData);
@@ -53,7 +54,7 @@ export const HomeScreen: React.FC = () => {
     } catch (err) {
       console.error('Failed to load dashboard data', err);
     }
-  }, []);
+  }, [currentUser?.role, tnpMode]);
 
   useEffect(() => {
     const loadTimer = setTimeout(() => {
@@ -76,10 +77,7 @@ export const HomeScreen: React.FC = () => {
     );
   }
 
-  // Filter urgent / upcoming drives
-  const closingSoonDrives = drives.filter(
-    (d) => d.status === 'deadline_near' || d.status === 'ongoing'
-  ).slice(0, 3);
+  const activeDrives = drives.filter((drive) => drive.status !== 'closed');
 
   return (
     <View style={styles.screen}>
@@ -107,7 +105,7 @@ export const HomeScreen: React.FC = () => {
           <StatCard
             label="Active Drives"
             value={drives.length}
-            subtitle="Campus 2026"
+            subtitle="Currently active"
             icon={<Briefcase size={20} color={COLORS.primaryAccent} />}
             accentColor={COLORS.primaryAccent}
           />
@@ -119,24 +117,6 @@ export const HomeScreen: React.FC = () => {
             accentColor={COLORS.teal}
           />
         </View>
-        <View style={[styles.statsGrid, { marginTop: SPACING.sm }]}>
-          <StatCard
-            label="Shortlists"
-            value="--"
-            subtitle="Pending API data"
-            icon={<Award size={20} color={COLORS.purple} />}
-            accentColor={COLORS.purple}
-          />
-          <StatCard
-            label="Highest Package"
-            value="--"
-            subtitle="Pending API data"
-            icon={<TrendingUp size={20} color={COLORS.success} />}
-            accentColor={COLORS.success}
-            onPress={() => navigation.navigate('PlacementStats')}
-          />
-        </View>
-
         {/* Quick Shortcut Buttons Row */}
         <View style={styles.shortcutsRow}>
           <TouchableOpacity
@@ -161,12 +141,12 @@ export const HomeScreen: React.FC = () => {
         {/* Urgent Deadlines / Featured Drives */}
         <View style={styles.sectionHeader}>
           <View>
-            <Text style={styles.sectionTitle}>Active Recruitment Drives</Text>
-            <Text style={styles.sectionSubtitle}>Drives matching your department & CGPA</Text>
+            <Text style={styles.sectionTitle}>Available Recruitment Drives</Text>
+            <Text style={styles.sectionSubtitle}>Review the details and apply before the deadline</Text>
           </View>
         </View>
 
-        {closingSoonDrives.map((drive) => {
+        {activeDrives.map((drive) => {
           const { isEligible } = placementService.checkEligibility(student, drive);
           const isApplied = appliedDriveIds.has(drive.id);
           return (
@@ -179,6 +159,14 @@ export const HomeScreen: React.FC = () => {
             />
           );
         })}
+        {activeDrives.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>No drives available right now</Text>
+            <Text style={styles.emptyStateText}>
+              New campus recruitment drives will appear here when CCPD publishes them.
+            </Text>
+          </View>
+        )}
 
         {/* Official Notices Section */}
         <View style={styles.sectionHeader}>
@@ -263,5 +251,22 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     color: COLORS.textMuted,
     marginTop: 2,
+  },
+  emptyState: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+  },
+  emptyStateTitle: {
+    ...TYPOGRAPHY.bodyBold,
+    color: COLORS.textPrimary,
+  },
+  emptyStateText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textMuted,
+    marginTop: SPACING.xs,
   },
 });

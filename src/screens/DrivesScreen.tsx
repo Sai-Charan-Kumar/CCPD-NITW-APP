@@ -15,6 +15,7 @@ import { SearchBar } from '../components/SearchBar';
 import { DriveCard } from '../components/DriveCard';
 import { EmptyState } from '../components/EmptyState';
 import { placementService } from '../data/placementService';
+import { useAuth } from '../context/AuthContext';
 import { PlacementDrive, StudentProfile, RootStackParamList, BottomTabParamList } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -31,6 +32,7 @@ const CATEGORIES = [
 export const DrivesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<DrivesRouteProp>();
+  const { currentUser, tnpMode } = useAuth();
 
   const [drives, setDrives] = useState<PlacementDrive[]>([]);
   const [student, setStudent] = useState<StudentProfile | null>(null);
@@ -44,21 +46,27 @@ export const DrivesScreen: React.FC = () => {
 
   const loadDrives = useCallback(async () => {
     try {
-      const studentData = await placementService.getStudentProfile();
       const fetchedDrives = await placementService.getDrives({
         query: searchQuery,
         category: selectedCategory,
         onlyEligible,
       });
-      const applications = await placementService.getApplications();
-
-      setStudent(studentData);
+      if (currentUser?.role === 'STUDENT' || tnpMode === 'student') {
+        const [studentData, applications] = await Promise.all([
+          placementService.getStudentProfile(),
+          placementService.getApplications(),
+        ]);
+        setStudent(studentData);
+        setAppliedDriveIds(new Set(applications.map((a) => a.driveId)));
+      } else {
+        setStudent(null);
+        setAppliedDriveIds(new Set());
+      }
       setDrives(fetchedDrives);
-      setAppliedDriveIds(new Set(applications.map((a) => a.driveId)));
     } catch (err) {
       console.error('Error fetching drives', err);
     }
-  }, [searchQuery, selectedCategory, onlyEligible]);
+  }, [currentUser?.role, tnpMode, searchQuery, selectedCategory, onlyEligible]);
 
   useEffect(() => {
     const loadTimer = setTimeout(() => {
@@ -126,9 +134,11 @@ export const DrivesScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
         }
         renderItem={({ item }) => {
-          const isEligible = student
-            ? placementService.checkEligibility(student, item).isEligible
-            : false;
+          const isEligible = currentUser?.role !== 'STUDENT' && tnpMode !== 'student'
+            ? true
+            : student
+              ? placementService.checkEligibility(student, item).isEligible
+              : false;
           const isApplied = appliedDriveIds.has(item.id);
 
           return (

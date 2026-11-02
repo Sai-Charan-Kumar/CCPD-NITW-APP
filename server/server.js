@@ -21,16 +21,12 @@ app.use('/api/groups', require('./routes/groupRoutes'));
 app.use('/api/interview-experiences', require('./routes/interviewExperienceRoutes'));
 app.use((error, req, res, next) => {
   console.error(error);
-  if (res.headersSent) return next(error);
-  const status = error.status
-    || (error.name === 'ValidationError' || error.name === 'CastError' ? 400 : 0)
-    || (error.code === 11000 ? 409 : 500);
-  return res.status(status).json({ message: 'Server error.', details: error.message });
+  res.status(error.name === 'ValidationError' ? 400 : 500).json({ message: 'Server error.', details: error.message });
 });
 
 const port = Number(process.env.PORT || 5000);
 connectDatabase()
-  .then(() => app.listen(port, () => console.log(`CCPD API listening on port ${port}`)))
+  .then(() => app.listen(port, '0.0.0.0', () => console.log(`CCPD API listening on port ${port}`)))
   .catch((error) => {
     console.error('Database connection failed.', error);
     process.exit(1);

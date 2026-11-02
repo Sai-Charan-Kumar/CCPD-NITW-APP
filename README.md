@@ -47,6 +47,20 @@ The frontend reads its backend URL from `EXPO_PUBLIC_API_URL`. Copy
 `http://10.0.2.2:5000/api` for an Android emulator. For a physical device,
 replace the host with the backend computer's LAN IP address.
 
+TNP coordinator accounts can switch between Student mode and TNP mode from
+the account header. Student mode provides the normal student experience,
+including drives and applications; TNP mode provides drive creation,
+placement operations, and coordinator workflows. The account remains a TNP
+account on the server in both modes.
+
+The phone and computer must be connected to the same network, and Windows
+Firewall must allow inbound connections to port 5000. After changing `.env`,
+restart Expo with `npx expo start -c` so the URL is reloaded.
+
+This app uses React Navigation directly rather than Expo Router. The root
+`.env` file disables Expo Router's SDK 56+ compatibility diagnostic, which is
+otherwise triggered by Expo CLI's optional Expo Router dependency.
+
 Student accounts can be created through the registration screen using a NITW
 student email in the format `xxYYbbBxxxx@student.nitw.ac.in`, for example
 `sm24csb0a77@student.nitw.ac.in`. TNP and CCPD
@@ -55,6 +69,12 @@ roles `tnp` and `head`; public registration intentionally creates students only.
 Registration sends a six-digit OTP through SMTP and creates the account only
 after the OTP is verified. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`,
 `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM` in `server/.env`.
+
+CCPD Head users can appoint student accounts as TNP coordinators from the
+dedicated “TNP Coordinators” tab. They can search by student name, email, or
+roll number; appointment changes the account role to `tnp`, allowing that user
+to sign in and manage placement operations. The same tab lists active
+coordinators and allows the CCPD Head to remove TNP access when required.
 
 Shortlists are persisted against applications. TNP and CCPD Head users can
 publish a shortlist with `POST /api/applications/drive/:driveId/shortlist`

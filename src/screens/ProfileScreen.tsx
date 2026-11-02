@@ -7,10 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  Modal,
-  TextInput,
 } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -27,7 +24,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
 import { placementService } from '../data/placementService';
-import { StudentInterviewRecord, StudentProfile, RootStackParamList } from '../types';
+import { Department, StudentInterviewRecord, StudentProfile, RootStackParamList } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
 
@@ -35,26 +32,43 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, tnpMode, logout } = useAuth();
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [interviewHistory, setInterviewHistory] = useState<StudentInterviewRecord[]>([]);
-  const [editingProfile, setEditingProfile] = useState(false);
-  const [editingResume, setEditingResume] = useState(false);
-  const [profileName, setProfileName] = useState('');
-  const [profilePhone, setProfilePhone] = useState('');
-  const [resumeFileName, setResumeFileName] = useState('');
-  const [resumeUrl, setResumeUrl] = useState('');
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
       try {
         setLoading(true);
+        if (currentUser?.role === 'CCPD_HEAD') {
+          setStudent(null);
+          setInterviewHistory([]);
+          return;
+        }
+        if (
+          currentUser &&
+          (currentUser.role === 'STUDENT' || currentUser.role === 'TNP') &&
+          currentUser.rollNumber &&
+          currentUser.department &&
+          currentUser.cgpa !== undefined
+        ) {
+          placementService.updateStudentIdentity({
+            name: currentUser.name,
+            rollNumber: currentUser.rollNumber,
+            email: currentUser.email,
+            department: currentUser.department as Department,
+            cgpa: currentUser.cgpa,
+          });
+        }
         const data = await placementService.getStudentProfile();
         setStudent(data);
-        const history = await placementService.getStudentInterviewHistory(data.id);
-        setInterviewHistory(history);
+        if (currentUser?.role === 'STUDENT' || tnpMode === 'student') {
+          const history = await placementService.getStudentInterviewHistory(data.id);
+          setInterviewHistory(history);
+        } else {
+          setInterviewHistory([]);
+        }
       } catch (err) {
         console.error('Failed to load student profile', err);
       } finally {
@@ -62,7 +76,7 @@ export const ProfileScreen: React.FC = () => {
       }
     }
     loadProfile();
-  }, [currentUser]);
+  }, [currentUser, tnpMode]);
 
   const handleLogout = () => {
     Alert.alert('Confirm Logout', 'Are you sure you want to log out of CCPD Placement Portal?', [
@@ -75,63 +89,9 @@ export const ProfileScreen: React.FC = () => {
     ]);
   };
 
-  const openProfileEditor = () => {
-    setProfileName(student?.name || currentUser?.name || '');
-    setProfilePhone(student?.phone || currentUser?.phone || '');
-    setEditingProfile(true);
-  };
+  const isStudent = !currentUser || currentUser.role !== 'CCPD_HEAD';
 
-  const saveProfile = async () => {
-    try {
-      setSaving(true);
-      await placementService.updateProfile({ name: profileName, phone: profilePhone });
-      setEditingProfile(false);
-      const updatedProfile = await placementService.getStudentProfile();
-      setStudent(updatedProfile);
-    } catch (error) {
-      Alert.alert('Unable to save profile', error instanceof Error ? error.message : 'Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const openResumeEditor = () => {
-    setResumeFileName(student?.resume.fileName || '');
-    setResumeUrl(student?.resume.url || '');
-    setEditingResume(true);
-  };
-
-  const chooseResume = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: 'application/pdf',
-      copyToCacheDirectory: true,
-    });
-    if (!result.canceled) {
-      setResumeFileName(result.assets[0].name);
-      setResumeUrl(result.assets[0].uri);
-    }
-  };
-
-  const saveResume = async () => {
-    if (!resumeFileName.trim()) {
-      Alert.alert('Resume required', 'Choose a PDF resume before saving.');
-      return;
-    }
-    try {
-      setSaving(true);
-      await placementService.updateProfile({
-        resume: { fileName: resumeFileName.trim(), url: resumeUrl.trim() },
-      });
-      setEditingResume(false);
-      setStudent(await placementService.getStudentProfile());
-    } catch (error) {
-      Alert.alert('Unable to save resume', error instanceof Error ? error.message : 'Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading || !student) {
+  if (loading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -139,9 +99,17 @@ export const ProfileScreen: React.FC = () => {
     );
   }
 
-  const isStudent = !currentUser || currentUser.role !== 'CCPD_HEAD';
-  const displayName = student.name || currentUser?.name || '';
-  const displayEmail = student.email || currentUser?.email || '';
+  if (isStudent && !student) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  const profile = student!;
+  const displayName = currentUser?.name || profile.name;
+  const displayEmail = currentUser?.email || profile.email;
   const displayRole = currentUser?.role || 'STUDENT';
 
   return (
@@ -173,12 +141,12 @@ export const ProfileScreen: React.FC = () => {
             {isStudent ? (
               <>
                 <Text style={styles.rollNumber}>
-                  {currentUser?.rollNumber || student.rollNumber} • {student.registrationNumber}
+                  {currentUser?.rollNumber || profile.rollNumber} • {profile.registrationNumber}
                 </Text>
                 <Text style={styles.departmentText}>
-                  {student.degree} in {currentUser?.department || student.department}
+                  {profile.degree} in {currentUser?.department || profile.department}
                 </Text>
-                <Text style={styles.batchText}>Graduating Batch: {student.batch}</Text>
+                <Text style={styles.batchText}>Graduating Batch: {profile.batch}</Text>
               </>
             ) : (
               <>
@@ -195,9 +163,6 @@ export const ProfileScreen: React.FC = () => {
             <Text style={styles.verifiedLabel}>Authorized CCPD Placement Officer Account</Text>
           </View>
         )}
-        <TouchableOpacity style={styles.editProfileBtn} onPress={openProfileEditor}>
-          <Text style={styles.editProfileBtnText}>Edit Profile</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Student Academic & Resume Sections (Only shown for Students) */}
@@ -211,14 +176,14 @@ export const ProfileScreen: React.FC = () => {
               <View style={styles.academicBox}>
                 <Text style={styles.academicLabel}>Current CGPA</Text>
                 <Text style={styles.academicValue}>
-                  {(currentUser?.cgpa || student.cgpa).toFixed(2)}
+                  {(currentUser?.cgpa || profile.cgpa).toFixed(2)}
                 </Text>
                 <Text style={styles.academicSub}>Scale of 10.0</Text>
               </View>
               <View style={styles.academicBox}>
                 <Text style={styles.academicLabel}>Active Backlogs</Text>
                 <Text style={[styles.academicValue, { color: COLORS.successDark }]}>
-                  {student.activeBacklogs}
+                  {profile.activeBacklogs}
                 </Text>
                 <Text style={styles.academicSub}>All Cleared</Text>
               </View>
@@ -227,12 +192,12 @@ export const ProfileScreen: React.FC = () => {
             <View style={[styles.academicGrid, { marginTop: SPACING.sm }]}>
               <View style={styles.academicBox}>
                 <Text style={styles.academicLabel}>10th Percentage</Text>
-                <Text style={styles.academicValueSmall}>{student.tenthPercentage}%</Text>
+                <Text style={styles.academicValueSmall}>{profile.tenthPercentage}%</Text>
                 <Text style={styles.academicSub}>CBSE Board</Text>
               </View>
               <View style={styles.academicBox}>
                 <Text style={styles.academicLabel}>12th / Inter Percentage</Text>
-                <Text style={styles.academicValueSmall}>{student.twelfthPercentage}%</Text>
+                <Text style={styles.academicValueSmall}>{profile.twelfthPercentage}%</Text>
                 <Text style={styles.academicSub}>State Board</Text>
               </View>
             </View>
@@ -251,16 +216,16 @@ export const ProfileScreen: React.FC = () => {
               </View>
               <View style={styles.resumeMeta}>
                 <Text style={styles.resumeFileName} numberOfLines={1}>
-                  {student.resume.fileName}
+                  {profile.resume.fileName}
                 </Text>
                 <Text style={styles.resumeDate}>
-                  {student.resume.updatedAt ? `Updated on ${student.resume.updatedAt}` : 'No resume uploaded'} • PDF Format
+                  Verified on {profile.resume.updatedAt} • PDF Format
                 </Text>
               </View>
               <TouchableOpacity
                 style={styles.previewBtn}
                 onPress={() =>
-                  Alert.alert('Resume Preview', `Opening ${student.resume.fileName} in viewer...`)
+                  Alert.alert('Resume Preview', `Opening ${profile.resume.fileName} in viewer...`)
                 }
               >
                 <ExternalLink size={16} color={COLORS.primaryAccent} />
@@ -269,9 +234,14 @@ export const ProfileScreen: React.FC = () => {
 
             <TouchableOpacity
               style={styles.updateResumeBtn}
-              onPress={openResumeEditor}
+              onPress={() =>
+                Alert.alert(
+                  'Resume Revision Request',
+                  'To update your verified resume, submit your updated PDF along with credential proof to the CCPD office.'
+                )
+              }
             >
-              <Text style={styles.updateResumeBtnText}>Edit Resume</Text>
+              <Text style={styles.updateResumeBtnText}>Request Resume Update</Text>
             </TouchableOpacity>
           </View>
 
@@ -279,7 +249,7 @@ export const ProfileScreen: React.FC = () => {
           <View style={[styles.sectionCard, SHADOWS.card]}>
             <Text style={styles.sectionTitle}>Profile Technical Skills</Text>
             <View style={styles.skillsContainer}>
-              {student.skills.map((skill, index) => (
+              {profile.skills.map((skill, index) => (
                 <View key={index} style={styles.skillChip}>
                   <Text style={styles.skillText}>{skill}</Text>
                 </View>
@@ -331,7 +301,7 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.infoRow}>
           <Phone size={16} color={COLORS.textMuted} />
           <Text style={styles.infoLabel}>Phone:</Text>
-          <Text style={styles.infoValue}>{student.phone || currentUser?.phone || ''}</Text>
+          <Text style={styles.infoValue}>{currentUser?.phone || profile?.phone || 'Not provided'}</Text>
         </View>
       </View>
 
@@ -367,7 +337,7 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <View>
               <Text style={styles.menuTitle}>Senior Interview Archives</Text>
-              <Text style={styles.menuSubtitle}>Real questions asked at Microsoft, TI, Google</Text>
+              <Text style={styles.menuSubtitle}>Review verified interview experiences shared by students.</Text>
             </View>
           </View>
           <ChevronRight size={18} color={COLORS.textMuted} />
@@ -395,48 +365,6 @@ export const ProfileScreen: React.FC = () => {
         <Text style={styles.logoutBtnText}>Log Out</Text>
       </TouchableOpacity>
       </ScrollView>
-
-      <Modal visible={editingProfile} transparent animationType="slide" onRequestClose={() => setEditingProfile(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-            <Text style={styles.modalLabel}>Name</Text>
-            <TextInput value={profileName} onChangeText={setProfileName} style={styles.modalInput} />
-            <Text style={styles.modalLabel}>Phone</Text>
-            <TextInput value={profilePhone} onChangeText={setProfilePhone} style={styles.modalInput} keyboardType="phone-pad" />
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setEditingProfile(false)} style={styles.modalCancel}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={saveProfile} style={styles.modalSave} disabled={saving}>
-                {saving ? <ActivityIndicator color={COLORS.textInverse} /> : <Text style={styles.modalSaveText}>Save</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={editingResume} transparent animationType="slide" onRequestClose={() => setEditingResume(false)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Edit Resume</Text>
-            <TouchableOpacity onPress={chooseResume} style={styles.chooseResumeBtn}>
-              <Text style={styles.chooseResumeText}>Choose PDF</Text>
-            </TouchableOpacity>
-            <Text style={styles.resumeSelected} numberOfLines={1}>{resumeFileName || 'No file selected'}</Text>
-            <Text style={styles.modalLabel}>Resume URL (optional)</Text>
-            <TextInput value={resumeUrl} onChangeText={setResumeUrl} style={styles.modalInput} autoCapitalize="none" />
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setEditingResume(false)} style={styles.modalCancel}>
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={saveResume} style={styles.modalSave} disabled={saving}>
-                {saving ? <ActivityIndicator color={COLORS.textInverse} /> : <Text style={styles.modalSaveText}>Save</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 };
@@ -462,19 +390,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: SPACING.md,
-  },
-  editProfileBtn: {
-    alignItems: 'center',
-    borderColor: COLORS.primaryAccent,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    marginTop: SPACING.sm,
-    paddingVertical: SPACING.sm,
-  },
-  editProfileBtnText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.primaryAccent,
-    fontWeight: '700',
   },
   avatarSection: {
     flexDirection: 'row',
@@ -802,80 +717,5 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodyBold,
     color: COLORS.danger,
     fontSize: 14,
-  },
-  modalBackdrop: {
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalCard: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
-    padding: SPACING.xl,
-  },
-  modalTitle: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.lg,
-  },
-  modalLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    fontWeight: '700',
-    marginBottom: SPACING.xs,
-  },
-  modalInput: {
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    justifyContent: 'flex-end',
-    marginTop: SPACING.sm,
-  },
-  modalCancel: {
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-  },
-  modalCancelText: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.textSecondary,
-  },
-  modalSave: {
-    backgroundColor: COLORS.primaryAccent,
-    borderRadius: RADIUS.md,
-    minWidth: 80,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
-  },
-  modalSaveText: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.textInverse,
-    textAlign: 'center',
-  },
-  chooseResumeBtn: {
-    alignItems: 'center',
-    backgroundColor: COLORS.primarySoft,
-    borderRadius: RADIUS.md,
-    paddingVertical: SPACING.md,
-  },
-  chooseResumeText: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.primaryAccent,
-  },
-  resumeSelected: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-    marginVertical: SPACING.md,
   },
 });

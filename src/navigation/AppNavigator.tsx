@@ -3,7 +3,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { AuthNavigator } from './AuthNavigator';
 import { StudentBottomTabs } from './StudentBottomTabs';
-import { TnpTabNavigator } from './TnpTabNavigator';
 import { HeadTabNavigator } from './HeadTabNavigator';
 import { JobDetailScreen } from '../screens/JobDetailScreen';
 import { ApplicationDetailScreen } from '../screens/ApplicationDetailScreen';
@@ -17,11 +16,12 @@ import { TnpDriveManagementScreen } from '../screens/tnp/TnpDriveManagementScree
 import { TnpCreateDriveScreen } from '../screens/tnp/TnpCreateDriveScreen';
 import { DriveAdminScreen } from '../screens/tnp/DriveAdminScreen';
 import { GroupChatScreen } from '../screens/GroupChatScreen';
+import { TnpTabNavigator } from './TnpTabNavigator';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, tnpMode } = useAuth();
 
   // If not logged in, render the Auth Stack
   if (!currentUser) {
@@ -34,7 +34,7 @@ export const AppNavigator: React.FC = () => {
       case 'CCPD_HEAD':
         return HeadTabNavigator;
       case 'TNP':
-        return TnpTabNavigator;
+        return tnpMode === 'tnp' ? TnpTabNavigator : StudentBottomTabs;
       case 'STUDENT':
       default:
         return StudentBottomTabs;

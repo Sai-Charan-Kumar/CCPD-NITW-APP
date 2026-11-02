@@ -6,16 +6,24 @@ import {
   InterviewExperience,
   Notice,
   PlacementDrive,
-  PlacementGroup,
-  RegisteredStudent,
   PlacementStatistics,
   StudentInterviewRecord,
   StudentProfile,
   NotificationItem,
   GroupMessage,
+  PlacementGroup,
 } from '../types';
 
 type DriveFilters = { category?: string; query?: string; onlyEligible?: boolean };
+export type CoordinatorCandidate = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  rollNumber: string;
+  department: string;
+  batch: string;
+};
 
 export const placementService = {
   async getStudentProfile(): Promise<StudentProfile> {
@@ -23,17 +31,32 @@ export const placementService = {
     return response.data;
   },
 
-  async getRegisteredStudents(): Promise<RegisteredStudent[]> {
-    const response = await axiosClient.get<RegisteredStudent[]>('/users/registered-students');
+  async searchCoordinatorCandidates(query: string): Promise<CoordinatorCandidate[]> {
+    const response = await axiosClient.get<CoordinatorCandidate[]>('/users/coordinator-candidates', {
+      params: { query },
+    });
     return response.data;
   },
 
-  async updateTnpAccess(id: string, enabled: boolean): Promise<void> {
-    await axiosClient.put(`/users/${id}/tnp-access`, { enabled });
+  async getCoordinators(): Promise<CoordinatorCandidate[]> {
+    const response = await axiosClient.get<CoordinatorCandidate[]>('/users/coordinators');
+    return response.data;
   },
 
-  async updateProfile(input: { name?: string; phone?: string; resume?: { fileName: string; url: string } }): Promise<void> {
-    await axiosClient.put('/users/profile', input);
+  async promoteStudentToCoordinator(id: string): Promise<CoordinatorCandidate> {
+    const response = await axiosClient.patch<{ user: CoordinatorCandidate }>(
+      `/users/coordinator-candidates/${id}/promote`
+    );
+    return response.data.user;
+  },
+
+  async demoteCoordinator(id: string): Promise<CoordinatorCandidate> {
+    const response = await axiosClient.patch<{ user: CoordinatorCandidate }>(`/users/coordinators/${id}/demote`);
+    return response.data.user;
+  },
+
+  updateStudentIdentity(_input: Pick<StudentProfile, 'name' | 'rollNumber' | 'email' | 'department' | 'cgpa'>): void {
+    // Identity is owned by the authenticated backend user and updated through account APIs.
   },
 
   checkEligibility(student: StudentProfile, drive: PlacementDrive) {
@@ -41,7 +64,9 @@ export const placementService = {
     const passedCriteria: string[] = [];
     if (student.cgpa < drive.eligibility.minCgpa) reasons.push(`CGPA too low: required minimum is ${drive.eligibility.minCgpa.toFixed(2)}`);
     else passedCriteria.push(`CGPA: ${student.cgpa.toFixed(2)} meets the minimum`);
-    if (!drive.eligibility.allowedDepartments.includes(student.department)) reasons.push('Department not eligible');
+    if (drive.eligibility.allowedDepartments.length > 0 && !drive.eligibility.allowedDepartments.includes(student.department)) {
+      reasons.push('Department not eligible');
+    }
     else passedCriteria.push(`Department: ${student.department} is eligible`);
     if (student.activeBacklogs > drive.eligibility.maxActiveBacklogs) reasons.push(`Active backlogs exceed the maximum of ${drive.eligibility.maxActiveBacklogs}`);
     else passedCriteria.push(`Backlogs: ${student.activeBacklogs} permitted`);
@@ -72,8 +97,33 @@ export const placementService = {
     registrationDeadline: string;
     description: string;
     requiredExtraDocs: string[];
+    eligibility: {
+      minCgpa: number;
+      allowedDepartments: Department[];
+    };
   }): Promise<PlacementDrive> {
     const response = await axiosClient.post<PlacementDrive>('/drives', input);
+    return response.data;
+  },
+
+  async updateDrive(driveId: string, input: {
+    companyName: string;
+    role: string;
+    ctc: string;
+    registrationDeadline: string;
+    description: string;
+    requiredExtraDocs: string[];
+    eligibility: {
+      minCgpa: number;
+      allowedDepartments: Department[];
+    };
+  }): Promise<PlacementDrive> {
+    const response = await axiosClient.put<PlacementDrive>(`/drives/${driveId}`, input);
+    return response.data;
+  },
+
+  async deleteDrive(driveId: string): Promise<{ message: string }> {
+    const response = await axiosClient.delete<{ message: string }>(`/drives/${driveId}`);
     return response.data;
   },
 
@@ -109,15 +159,13 @@ export const placementService = {
   },
 
   async getNotices(category?: string): Promise<Notice[]> {
-    const response = await axiosClient.get<Notice[]>('/notices', {
-      params: category && category !== 'All' ? { category } : undefined,
-    });
-    return response.data;
+    const response = await axiosClient.get<Notice[]>('/notices');
+    return !category || category === 'All' ? response.data : response.data.filter((notice) => notice.category === category);
   },
 
   async getNoticeById(id: string): Promise<Notice | undefined> {
-    const response = await axiosClient.get<Notice[]>('/notices', { params: { id } });
-    return response.data[0];
+    const notices = await this.getNotices();
+    return notices.find((notice) => notice.id === id);
   },
 
   async getUnreadNoticesCount(): Promise<number> {
@@ -156,7 +204,7 @@ export const placementService = {
   },
 
   async getMyGroups(): Promise<PlacementGroup[]> {
-    const response = await axiosClient.get<PlacementGroup[]>('/groups/my-groups');
+    const response = await axiosClient.get<PlacementGroup[]>('/groups/mine');
     return response.data;
   },
 
@@ -168,12 +216,11 @@ export const placementService = {
   },
 
   async getInterviewExperiences(): Promise<InterviewExperience[]> {
-    const response = await axiosClient.get<InterviewExperience[]>('/interview-experiences');
-    return response.data;
+    return [];
   },
 
   async getInterviewExperienceById(_id: string): Promise<InterviewExperience | undefined> {
-    throw new Error('Not implemented');
+    return undefined;
   },
 
   async getStudentInterviewHistory(studentId: string): Promise<StudentInterviewRecord[]> {

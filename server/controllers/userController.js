@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const { publicUser } = require('./authController');
+const User = require('../models/User');
 
 const toStudentProfile = (user) => ({
   id: user._id.toString(),
@@ -135,6 +136,75 @@ exports.updateTnpAccess = async (req, res, next) => {
         role: user.role.toUpperCase()
       }
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const coordinatorView = (user) => ({
+  id: user._id.toString(),
+  name: user.name,
+  email: user.email,
+  role: user.role.toUpperCase(),
+  rollNumber: user.rollNumber || '',
+  department: user.department || '',
+  batch: user.batch || ''
+});
+
+exports.searchStudentsForCoordinator = async (req, res, next) => {
+  try {
+    const query = typeof req.query.query === 'string' ? req.query.query.trim() : '';
+    if (query.length < 2) {
+      return res.status(400).json({ message: 'Enter at least two characters to search.' });
+    }
+    const pattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const students = await User.find({
+      role: 'student',
+      $or: [{ name: pattern }, { email: pattern }, { rollNumber: pattern }]
+    })
+      .select('name email role rollNumber department batch')
+      .sort({ name: 1 })
+      .limit(20);
+    return res.json(students.map(coordinatorView));
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.listCoordinators = async (req, res, next) => {
+  try {
+    const coordinators = await User.find({ role: 'tnp' })
+      .select('name email role rollNumber department batch')
+      .sort({ name: 1 });
+    return res.json(coordinators.map(coordinatorView));
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.promoteStudentToCoordinator = async (req, res, next) => {
+  try {
+    const student = await User.findOneAndUpdate(
+      { _id: req.params.id, role: 'student' },
+      { role: 'tnp' },
+      { new: true, runValidators: true }
+    ).select('name email role rollNumber department batch');
+    if (!student) return res.status(404).json({ message: 'Student not found or already a coordinator.' });
+    return res.json({ user: coordinatorView(student) });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.demoteCoordinator = async (req, res, next) => {
+  try {
+    const coordinator = await User.findOneAndUpdate(
+      { _id: req.params.id, role: 'tnp' },
+      { role: 'student' },
+      { new: true, runValidators: true }
+    ).select('name email role rollNumber department batch');
+    if (!coordinator) return res.status(404).json({ message: 'Coordinator not found.' });
+    return res.json({ user: coordinatorView(coordinator) });
   } catch (error) {
     return next(error);
   }

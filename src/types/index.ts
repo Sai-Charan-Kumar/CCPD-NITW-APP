@@ -147,6 +147,7 @@ export type DrivePhase =
 
 export interface PlacementGroup {
   id: string;
+  groupId: string;
   companyName: string;
   currentPhase: DrivePhase;
   memberCount: number;
@@ -311,7 +312,7 @@ export type RootStackParamList = {
   PlacementStats: undefined;
   Notifications: undefined;
   TnpDriveManagement: undefined;
-  CreateDrive: undefined;
+  CreateDrive: { driveId?: string } | undefined;
   DriveAdmin: { driveId: string };
   GroupChat: { groupId: string; companyName: string };
 };
@@ -329,6 +330,7 @@ export type StudentBottomTabParamList = BottomTabParamList;
 
 export type HeadTabParamList = {
   HeadDashboard: undefined;
+  TnpManagement: undefined;
   Drives: { categoryFilter?: string };
   PlacementStats: undefined;
   Profile: undefined;

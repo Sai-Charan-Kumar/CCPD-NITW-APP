@@ -1,8 +1,16 @@
 const Drive = require('../models/Drive');
+const groupController = require('./groupController');
 
 const toFrontend = (drive) => {
   const d = drive.toObject ? drive.toObject() : drive;
-  const status = d.status === 'Closed' ? 'closed' : new Date(d.registrationDeadline) <= new Date() ? 'closed' : 'upcoming';
+  const now = new Date();
+  const deadline = new Date(d.registrationDeadline);
+  const daysUntilDeadline = (deadline.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
+  const status = d.status === 'Closed' || deadline <= now
+    ? 'closed'
+    : daysUntilDeadline <= 3
+      ? 'deadline_near'
+      : 'ongoing';
   return {
     ...d,
     id: d._id.toString(),
@@ -46,6 +54,13 @@ exports.create = async (req, res, next) => {
     if (!companyName || !role || !ctc || !registrationDeadline || !description) {
       return res.status(400).json({ message: 'Company, role, CTC, deadline, and description are required.' });
     }
+    const deadlineDate = new Date(registrationDeadline);
+    if (Number.isNaN(deadlineDate.getTime())) {
+      return res.status(400).json({ message: 'Registration deadline must be a valid date.' });
+    }
+    if (deadlineDate <= new Date()) {
+      return res.status(400).json({ message: 'Registration deadline must be in the future.' });
+    }
     const drive = await Drive.create({
       company: companyName,
       role,
@@ -59,9 +74,54 @@ exports.create = async (req, res, next) => {
         minTwelfthMarks: eligibility.minTwelfthMarks || 0,
         openForAlreadyPlaced: Boolean(eligibility.openForAlreadyPlaced)
       },
-      registrationDeadline, driveDate: req.body.driveDate || registrationDeadline, description, requiredExtraDocs
+      registrationDeadline: deadlineDate,
+      driveDate: req.body.driveDate || deadlineDate,
+      description,
+      requiredExtraDocs
     });
+    await groupController.createForDrive(drive, req.user._id);
     return res.status(201).json(toFrontend(drive));
+  } catch (error) { return next(error); }
+};
+
+exports.update = async (req, res, next) => {
+  try {
+    const { companyName, role, ctc, registrationDeadline, description, requiredExtraDocs = [], eligibility = {} } = req.body;
+    if (!companyName || !role || !ctc || !registrationDeadline || !description) {
+      return res.status(400).json({ message: 'Company, role, CTC, deadline, and description are required.' });
+    }
+    const deadlineDate = new Date(registrationDeadline);
+    if (Number.isNaN(deadlineDate.getTime())) {
+      return res.status(400).json({ message: 'Registration deadline must be a valid date.' });
+    }
+    if (deadlineDate <= new Date()) {
+      return res.status(400).json({ message: 'Registration deadline must be in the future.' });
+    }
+    const drive = await Drive.findByIdAndUpdate(
+      req.params.id,
+      {
+        company: companyName.trim(),
+        role: role.trim(),
+        ctc: { total: ctc.trim(), baseSalary: ctc.trim() },
+        registrationDeadline: deadlineDate,
+        description: description.trim(),
+        requiredExtraDocs,
+        'eligibilityCriteria.minCgpa': Number(eligibility.minCgpa) || 0,
+        'eligibilityCriteria.allowedDepartments': eligibility.allowedDepartments || []
+      },
+      { new: true, runValidators: true }
+    );
+    if (!drive) return res.status(404).json({ message: 'Drive not found.' });
+    return res.json(toFrontend(drive));
+  } catch (error) { return next(error); }
+};
+
+exports.remove = async (req, res, next) => {
+  try {
+    const drive = await Drive.findByIdAndDelete(req.params.id);
+    if (!drive) return res.status(404).json({ message: 'Drive not found.' });
+    await groupController.removeForDrive(drive._id);
+    return res.json({ message: 'Drive deleted successfully.' });
   } catch (error) { return next(error); }
 };
 
