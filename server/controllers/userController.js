@@ -1,6 +1,5 @@
 const User = require('../models/User');
 const { publicUser } = require('./authController');
-const User = require('../models/User');
 
 const toStudentProfile = (user) => ({
   id: user._id.toString(),
