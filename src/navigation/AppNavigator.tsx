@@ -8,7 +8,6 @@ import { JobDetailScreen } from '../screens/JobDetailScreen';
 import { ApplicationDetailScreen } from '../screens/ApplicationDetailScreen';
 import { NoticeDetailScreen } from '../screens/NoticeDetailScreen';
 import { PlacementStatsScreen } from '../screens/PlacementStatsScreen';
-import { InterviewExperiencesScreen } from '../screens/InterviewExperiencesScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { RootStackParamList } from '../types';
 import { COLORS, TYPOGRAPHY } from '../constants/theme';
@@ -95,13 +94,6 @@ export const AppNavigator: React.FC = () => {
         component={PlacementStatsScreen}
         options={{
           title: 'Institutional Analytics',
-        }}
-      />
-      <Stack.Screen
-        name="InterviewExperiences"
-        component={InterviewExperiencesScreen}
-        options={{
-          title: 'Senior Interview Archives',
         }}
       />
       <Stack.Screen

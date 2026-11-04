@@ -1,4 +1,6 @@
 const Drive = require('../models/Drive');
+const Application = require('../models/Application');
+const mongoose = require('mongoose');
 const groupController = require('./groupController');
 
 const toFrontend = (drive) => {
@@ -36,7 +38,11 @@ exports.list = async (req, res, next) => {
       { skillsRequired: { $regex: query, $options: 'i' } }
     ];
     const drives = await Drive.find(filter).sort({ registrationDeadline: 1 });
-    return res.json(drives.map(toFrontend));
+    const result = await Promise.all(drives.map(async (drive) => ({
+      ...toFrontend(drive),
+      appliedCount: await Application.countDocuments({ driveId: drive._id })
+    })));
+    return res.json(result);
   } catch (error) { return next(error); }
 };
 
@@ -44,13 +50,25 @@ exports.getById = async (req, res, next) => {
   try {
     const drive = await Drive.findById(req.params.id);
     if (!drive) return res.status(404).json({ message: 'Drive not found.' });
-    return res.json(toFrontend(drive));
+    return res.json({
+      ...toFrontend(drive),
+      appliedCount: await Application.countDocuments({ driveId: drive._id })
+    });
   } catch (error) { return next(error); }
 };
 
 exports.create = async (req, res, next) => {
   try {
-    const { companyName, role, ctc, registrationDeadline, description, requiredExtraDocs = [], eligibility = {} } = req.body;
+    const {
+      companyName,
+      role,
+      ctc,
+      registrationDeadline,
+      registrationDeadlineDate,
+      description,
+      requiredExtraDocs = [],
+      eligibility = {}
+    } = req.body;
     if (!companyName || !role || !ctc || !registrationDeadline || !description) {
       return res.status(400).json({ message: 'Company, role, CTC, deadline, and description are required.' });
     }
@@ -58,8 +76,31 @@ exports.create = async (req, res, next) => {
     if (Number.isNaN(deadlineDate.getTime())) {
       return res.status(400).json({ message: 'Registration deadline must be a valid date.' });
     }
-    if (deadlineDate <= new Date()) {
-      return res.status(400).json({ message: 'Registration deadline must be in the future.' });
+    const today = new Date();
+    const todayKey = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0')
+    ].join('-');
+    const deadlineDateKey = typeof registrationDeadlineDate === 'string'
+      ? registrationDeadlineDate
+      : [
+        deadlineDate.getFullYear(),
+        String(deadlineDate.getMonth() + 1).padStart(2, '0'),
+        String(deadlineDate.getDate()).padStart(2, '0')
+      ].join('-');
+    const deadlineCalendarDate = /^\d{4}-\d{2}-\d{2}$/.test(deadlineDateKey)
+      ? new Date(`${deadlineDateKey}T00:00:00`)
+      : new Date(Number.NaN);
+    const normalizedDeadlineKey = !Number.isNaN(deadlineCalendarDate.getTime())
+      ? [
+        deadlineCalendarDate.getFullYear(),
+        String(deadlineCalendarDate.getMonth() + 1).padStart(2, '0'),
+        String(deadlineCalendarDate.getDate()).padStart(2, '0')
+      ].join('-')
+      : '';
+    if (normalizedDeadlineKey !== deadlineDateKey || deadlineDateKey < todayKey) {
+      return res.status(400).json({ message: 'Registration deadline cannot be earlier than today.' });
     }
     const drive = await Drive.create({
       company: companyName,
@@ -118,8 +159,12 @@ exports.update = async (req, res, next) => {
 
 exports.remove = async (req, res, next) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid drive ID.' });
+    }
     const drive = await Drive.findByIdAndDelete(req.params.id);
     if (!drive) return res.status(404).json({ message: 'Drive not found.' });
+    await Application.deleteMany({ driveId: drive._id });
     await groupController.removeForDrive(drive._id);
     return res.json({ message: 'Drive deleted successfully.' });
   } catch (error) { return next(error); }

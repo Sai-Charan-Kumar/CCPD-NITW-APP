@@ -18,7 +18,6 @@ app.use('/api/stats', require('./routes/statsRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/groups', require('./routes/groupRoutes'));
-app.use('/api/interview-experiences', require('./routes/interviewExperienceRoutes'));
 app.use((error, req, res, next) => {
   console.error(error);
   res.status(error.name === 'ValidationError' ? 400 : 500).json({ message: 'Server error.', details: error.message });

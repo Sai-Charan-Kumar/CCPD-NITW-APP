@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { FileCheck } from 'lucide-react-native';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
@@ -35,12 +35,12 @@ export const ApplicationsScreen: React.FC = () => {
     }
   }, [selectedTab]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const loadTimer = setTimeout(() => {
       void loadApplications();
     }, 0);
     return () => clearTimeout(loadTimer);
-  }, [loadApplications]);
+  }, [loadApplications]));
 
   const onRefresh = async () => {
     setRefreshing(true);

@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,7 +16,6 @@ import {
   FileText,
   ShieldCheck,
   TrendingUp,
-  BookOpen,
   ExternalLink,
   ChevronRight,
   Info,
@@ -24,18 +25,36 @@ import {
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
 import { placementService } from '../data/placementService';
-import { Department, StudentInterviewRecord, StudentProfile, RootStackParamList } from '../types';
+import { Department, StudentProfile, RootStackParamList } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
+import { getApiErrorMessage } from '../api/axiosClient';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type ProfileForm = {
+  name: string;
+  email: string;
+  phone: string;
+  rollNumber: string;
+  registrationNumber: string;
+  department: string;
+  degree: string;
+  batch: string;
+  cgpa: string;
+  activeBacklogs: string;
+  tenthPercentage: string;
+  twelfthPercentage: string;
+  skills: string;
+};
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { currentUser, tnpMode, logout } = useAuth();
+  const { currentUser, tnpMode, logout, updateCurrentUser } = useAuth();
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [interviewHistory, setInterviewHistory] = useState<StudentInterviewRecord[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<ProfileForm | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
@@ -43,7 +62,6 @@ export const ProfileScreen: React.FC = () => {
         setLoading(true);
         if (currentUser?.role === 'CCPD_HEAD') {
           setStudent(null);
-          setInterviewHistory([]);
           return;
         }
         if (
@@ -63,12 +81,6 @@ export const ProfileScreen: React.FC = () => {
         }
         const data = await placementService.getStudentProfile();
         setStudent(data);
-        if (currentUser?.role === 'STUDENT' || tnpMode === 'student') {
-          const history = await placementService.getStudentInterviewHistory(data.id);
-          setInterviewHistory(history);
-        } else {
-          setInterviewHistory([]);
-        }
       } catch (err) {
         console.error('Failed to load student profile', err);
       } finally {
@@ -87,6 +99,88 @@ export const ProfileScreen: React.FC = () => {
         onPress: () => logout(),
       },
     ]);
+  };
+
+  const openEditor = () => {
+    if (!student) return;
+    setForm({
+      name: student.name,
+      email: student.email,
+      phone: student.phone,
+      rollNumber: student.rollNumber,
+      registrationNumber: student.registrationNumber,
+      department: student.department,
+      degree: student.degree,
+      batch: student.batch,
+      cgpa: String(student.cgpa),
+      activeBacklogs: String(student.activeBacklogs),
+      tenthPercentage: String(student.tenthPercentage),
+      twelfthPercentage: String(student.twelfthPercentage),
+      skills: student.skills.join(', '),
+    });
+    setEditing(true);
+  };
+
+  const updateForm = (field: keyof ProfileForm, value: string) => {
+    setForm((current) => current ? { ...current, [field]: value } : current);
+  };
+
+  const saveProfile = async () => {
+    if (!form) return;
+    const cgpa = Number(form.cgpa);
+    const activeBacklogs = Number(form.activeBacklogs);
+    const tenthPercentage = Number(form.tenthPercentage);
+    const twelfthPercentage = Number(form.twelfthPercentage);
+    if (!form.name.trim() || !form.email.trim()) {
+      Alert.alert('Incomplete profile', 'Name and email are required.');
+      return;
+    }
+    if (!Number.isFinite(cgpa) || cgpa < 0 || cgpa > 10) {
+      Alert.alert('Invalid CGPA', 'CGPA must be between 0 and 10.');
+      return;
+    }
+    if (![tenthPercentage, twelfthPercentage].every((value) => Number.isFinite(value) && value >= 0 && value <= 100)) {
+      Alert.alert('Invalid percentage', '10th and 12th percentages must be between 0 and 100.');
+      return;
+    }
+    if (!Number.isInteger(activeBacklogs) || activeBacklogs < 0) {
+      Alert.alert('Invalid backlogs', 'Active backlogs must be a whole number greater than or equal to 0.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const updated = await placementService.updateStudentProfile({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        rollNumber: form.rollNumber.trim(),
+        registrationNumber: form.registrationNumber.trim(),
+        department: form.department.trim() as Department,
+        degree: form.degree.trim() ? form.degree.trim() as StudentProfile['degree'] : undefined,
+        batch: form.batch.trim(),
+        cgpa,
+        activeBacklogs,
+        tenthPercentage,
+        twelfthPercentage,
+        skills: form.skills.split(',').map((skill) => skill.trim()).filter(Boolean),
+      });
+      setStudent(updated);
+      updateCurrentUser({
+        name: updated.name,
+        email: updated.email,
+        phone: updated.phone,
+        rollNumber: updated.rollNumber,
+        department: updated.department,
+        cgpa: updated.cgpa,
+      });
+      setEditing(false);
+      Alert.alert('Profile updated', 'Your profile changes have been saved.');
+    } catch (error) {
+      Alert.alert('Unable to update profile', getApiErrorMessage(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const isStudent = !currentUser || currentUser.role !== 'CCPD_HEAD';
@@ -108,8 +202,8 @@ export const ProfileScreen: React.FC = () => {
   }
 
   const profile = student!;
-  const displayName = currentUser?.name || profile.name;
-  const displayEmail = currentUser?.email || profile.email;
+  const displayName = isStudent ? profile.name : currentUser?.name || '';
+  const displayEmail = isStudent ? profile.email : currentUser?.email || '';
   const displayRole = currentUser?.role || 'STUDENT';
 
   return (
@@ -131,6 +225,11 @@ export const ProfileScreen: React.FC = () => {
                 .slice(0, 2)}
             </Text>
           </View>
+          {isStudent && (
+            <TouchableOpacity style={styles.editButton} onPress={openEditor} activeOpacity={0.8}>
+              <Text style={styles.editButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
+          )}
           <View style={styles.nameSection}>
             <View style={styles.nameRow}>
               <Text style={styles.studentName} numberOfLines={1}>
@@ -141,10 +240,10 @@ export const ProfileScreen: React.FC = () => {
             {isStudent ? (
               <>
                 <Text style={styles.rollNumber}>
-                  {currentUser?.rollNumber || profile.rollNumber} • {profile.registrationNumber}
+                  {profile.rollNumber} • {profile.registrationNumber}
                 </Text>
                 <Text style={styles.departmentText}>
-                  {profile.degree} in {currentUser?.department || profile.department}
+                  {profile.degree} in {profile.department}
                 </Text>
                 <Text style={styles.batchText}>Graduating Batch: {profile.batch}</Text>
               </>
@@ -176,7 +275,7 @@ export const ProfileScreen: React.FC = () => {
               <View style={styles.academicBox}>
                 <Text style={styles.academicLabel}>Current CGPA</Text>
                 <Text style={styles.academicValue}>
-                  {(currentUser?.cgpa || profile.cgpa).toFixed(2)}
+                  {profile.cgpa.toFixed(2)}
                 </Text>
                 <Text style={styles.academicSub}>Scale of 10.0</Text>
               </View>
@@ -257,36 +356,6 @@ export const ProfileScreen: React.FC = () => {
             </View>
           </View>
 
-          <View style={[styles.sectionCard, SHADOWS.card]}>
-        <View style={styles.interviewSectionHeader}>
-              <View style={styles.interviewSectionTitle}>
-                <Text style={styles.sectionTitle}>My Interviews</Text>
-                <Text style={styles.sectionSubtitle}>
-                  Record interviews you attended and keep your experience history.
-                </Text>
-              </View>
-            </View>
-
-            {interviewHistory.length === 0 ? (
-              <Text style={styles.emptyInterviewText}>
-                No interviews recorded yet. Add one after you interview with a company.
-              </Text>
-            ) : (
-              interviewHistory.map((record) => (
-                <View key={record.id} style={styles.interviewRecord}>
-                  <View style={styles.interviewRecordHeader}>
-                    <View style={styles.interviewRecordTitle}>
-                      <Text style={styles.interviewCompany}>{record.companyName}</Text>
-                      <Text style={styles.interviewRole}>{record.role}</Text>
-                    </View>
-                    <Text style={styles.interviewOutcome}>{record.outcome}</Text>
-                  </View>
-                  <Text style={styles.interviewDate}>{record.interviewDate}</Text>
-                  <Text style={styles.interviewNotes}>{record.notes}</Text>
-                </View>
-              ))
-            )}
-          </View>
         </>
       )}
 
@@ -301,7 +370,7 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.infoRow}>
           <Phone size={16} color={COLORS.textMuted} />
           <Text style={styles.infoLabel}>Phone:</Text>
-          <Text style={styles.infoValue}>{currentUser?.phone || profile?.phone || 'Not provided'}</Text>
+          <Text style={styles.infoValue}>{profile?.phone || 'Not provided'}</Text>
         </View>
       </View>
 
@@ -326,22 +395,6 @@ export const ProfileScreen: React.FC = () => {
           <ChevronRight size={18} color={COLORS.textMuted} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => navigation.navigate('InterviewExperiences')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.menuLeft}>
-            <View style={[styles.menuIconCircle, { backgroundColor: COLORS.tealLight }]}>
-              <BookOpen size={18} color={COLORS.teal} />
-            </View>
-            <View>
-              <Text style={styles.menuTitle}>Senior Interview Archives</Text>
-              <Text style={styles.menuSubtitle}>Review verified interview experiences shared by students.</Text>
-            </View>
-          </View>
-          <ChevronRight size={18} color={COLORS.textMuted} />
-        </TouchableOpacity>
       </View>
 
       {/* Institute Placement Policy Summary */}
@@ -365,6 +418,49 @@ export const ProfileScreen: React.FC = () => {
         <Text style={styles.logoutBtnText}>Log Out</Text>
       </TouchableOpacity>
       </ScrollView>
+      {form && (
+        <Modal visible={editing} animationType="slide" onRequestClose={() => !saving && setEditing(false)}>
+          <ScrollView style={styles.editorContainer} contentContainerStyle={styles.editorContent}>
+            <Text style={styles.editorTitle}>Edit Profile</Text>
+            <Text style={styles.editorSubtitle}>Update your personal and academic information.</Text>
+            {([
+              ['name', 'Full name'],
+              ['email', 'Email address'],
+              ['phone', 'Phone number'],
+              ['rollNumber', 'Roll number'],
+              ['registrationNumber', 'Registration number'],
+              ['department', 'Department / branch'],
+              ['degree', 'Degree (B.Tech, M.Tech, or MCA)'],
+              ['batch', 'Graduation year / batch'],
+              ['cgpa', 'CGPA (0-10)'],
+              ['activeBacklogs', 'Active backlogs'],
+              ['tenthPercentage', '10th percentage (0-100)'],
+              ['twelfthPercentage', '12th percentage (0-100)'],
+              ['skills', 'Skills (comma separated)'],
+            ] as [keyof ProfileForm, string][]).map(([field, label]) => (
+              <View key={field}>
+                <Text style={styles.editorLabel}>{label}</Text>
+                <TextInput
+                  style={styles.editorInput}
+                  value={form[field]}
+                  onChangeText={(value) => updateForm(field, value)}
+                  keyboardType={['cgpa', 'activeBacklogs', 'tenthPercentage', 'twelfthPercentage'].includes(field) ? 'decimal-pad' : 'default'}
+                  autoCapitalize={field === 'email' ? 'none' : 'sentences'}
+                  editable={!saving}
+                />
+              </View>
+            ))}
+            <View style={styles.editorActions}>
+              <TouchableOpacity style={styles.cancelButton} onPress={() => setEditing(false)} disabled={saving}>
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveButton} onPress={() => void saveProfile()} disabled={saving}>
+                {saving ? <ActivityIndicator color={COLORS.textInverse} /> : <Text style={styles.saveButtonText}>Save Changes</Text>}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </Modal>
+      )}
     </>
   );
 };
@@ -648,58 +744,77 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: 16,
   },
-  interviewSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.md,
+  editButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
   },
-  interviewSectionTitle: {
+  editButtonText: {
+    ...TYPOGRAPHY.bodyBold,
+    color: COLORS.primaryAccent,
+  },
+  editorContainer: {
     flex: 1,
-    marginRight: SPACING.md,
+    backgroundColor: COLORS.background,
   },
-  emptyInterviewText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textMuted,
+  editorContent: {
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxxl,
   },
-  interviewRecord: {
-    borderTopColor: COLORS.border,
-    borderTopWidth: 1,
+  editorTitle: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.primary,
+    marginBottom: SPACING.xs,
+  },
+  editorSubtitle: {
+    ...TYPOGRAPHY.body,
+    marginBottom: SPACING.lg,
+  },
+  editorLabel: {
+    ...TYPOGRAPHY.bodyBold,
+    marginBottom: SPACING.xs,
+    marginTop: SPACING.sm,
+  },
+  editorInput: {
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    color: COLORS.textPrimary,
+    paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.md,
   },
-  interviewRecordHeader: {
-    alignItems: 'flex-start',
+  editorActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: SPACING.md,
+    marginTop: SPACING.xl,
   },
-  interviewRecordTitle: {
+  cancelButton: {
+    alignItems: 'center',
+    borderColor: COLORS.borderDark,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
     flex: 1,
-    marginRight: SPACING.sm,
+    justifyContent: 'center',
+    padding: SPACING.md,
   },
-  interviewCompany: {
+  cancelButtonText: {
     ...TYPOGRAPHY.bodyBold,
-    color: COLORS.textPrimary,
-  },
-  interviewRole: {
-    ...TYPOGRAPHY.bodySmall,
     color: COLORS.textSecondary,
-    marginTop: 2,
   },
-  interviewOutcome: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.primaryAccent,
-    fontWeight: '700',
+  saveButton: {
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryAccent,
+    borderRadius: RADIUS.md,
+    flex: 1,
+    justifyContent: 'center',
+    padding: SPACING.md,
   },
-  interviewDate: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    marginTop: SPACING.xs,
-  },
-  interviewNotes: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-    lineHeight: 18,
-    marginTop: SPACING.sm,
+  saveButtonText: {
+    ...TYPOGRAPHY.bodyBold,
+    color: COLORS.textInverse,
   },
   logoutBtn: {
     flexDirection: 'row',

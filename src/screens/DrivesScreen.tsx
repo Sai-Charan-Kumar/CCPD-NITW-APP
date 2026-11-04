@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Briefcase, CheckCircle2 } from 'lucide-react-native';
 import { COLORS, RADIUS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
@@ -33,6 +33,7 @@ export const DrivesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<DrivesRouteProp>();
   const { currentUser, tnpMode } = useAuth();
+  const currentUserRole = currentUser?.role;
 
   const [drives, setDrives] = useState<PlacementDrive[]>([]);
   const [student, setStudent] = useState<StudentProfile | null>(null);
@@ -51,7 +52,9 @@ export const DrivesScreen: React.FC = () => {
         category: selectedCategory,
         onlyEligible,
       });
-      if (currentUser?.role === 'STUDENT' || tnpMode === 'student') {
+      const canUseStudentFeatures = currentUserRole === 'STUDENT'
+        || (currentUserRole === 'TNP' && tnpMode === 'student');
+      if (canUseStudentFeatures) {
         const [studentData, applications] = await Promise.all([
           placementService.getStudentProfile(),
           placementService.getApplications(),
@@ -66,14 +69,14 @@ export const DrivesScreen: React.FC = () => {
     } catch (err) {
       console.error('Error fetching drives', err);
     }
-  }, [currentUser?.role, tnpMode, searchQuery, selectedCategory, onlyEligible]);
+  }, [currentUserRole, tnpMode, searchQuery, selectedCategory, onlyEligible]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const loadTimer = setTimeout(() => {
       void loadDrives();
     }, 0);
     return () => clearTimeout(loadTimer);
-  }, [loadDrives]);
+  }, [loadDrives]));
 
   const onRefresh = async () => {
     setRefreshing(true);

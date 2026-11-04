@@ -243,38 +243,6 @@ export interface Notice {
   }[];
 }
 
-export interface InterviewExperience {
-  id: string;
-  companyName: string;
-  role: string;
-  companyLogo: string;
-  studentName: string;
-  batch: string;
-  department: Department;
-  verdict: 'Selected' | 'Offered' | 'Reached Final Round';
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-  cgpa: number;
-  packageOffered: string;
-  rounds: {
-    title: string;
-    duration: string;
-    questionsAsked: string[];
-    tipsAndStrategy: string;
-  }[];
-  overallAdvice: string;
-  postedDate: string;
-}
-
-export interface StudentInterviewRecord {
-  id: string;
-  studentId: string;
-  companyName: string;
-  role: string;
-  interviewDate: string;
-  outcome: 'Selected' | 'Offered' | 'Reached Final Round' | 'Not Selected' | 'In Progress';
-  notes: string;
-}
-
 export interface PlacementStatistics {
   academicYear: string;
   totalStudentsEligible: number;
@@ -307,8 +275,6 @@ export type RootStackParamList = {
   JobDetail: { driveId: string };
   ApplicationDetail: { applicationId: string };
   NoticeDetail: { noticeId: string };
-  InterviewExperiences: undefined;
-  InterviewExperienceDetail: { experienceId: string };
   PlacementStats: undefined;
   Notifications: undefined;
   TnpDriveManagement: undefined;

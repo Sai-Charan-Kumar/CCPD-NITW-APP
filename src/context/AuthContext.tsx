@@ -23,6 +23,7 @@ interface AuthContextType {
   register: (payload: RegisterPayload) => Promise<{ success: boolean; message?: string; requiresVerification?: boolean; email?: string }>;
   verifyRegistration: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
+  updateCurrentUser: (updates: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -111,7 +112,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, isLoading, tnpMode, setTnpMode, login, register, verifyRegistration, logout }}>
+    <AuthContext.Provider value={{
+      currentUser,
+      isLoading,
+      tnpMode,
+      setTnpMode,
+      login,
+      register,
+      verifyRegistration,
+      logout,
+      updateCurrentUser: (updates) => setCurrentUser((user) => user ? { ...user, ...updates } : user),
+    }}>
       {children}
     </AuthContext.Provider>
   );

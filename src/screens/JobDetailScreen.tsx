@@ -23,6 +23,7 @@ import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme
 import { StatusBadge } from '../components/StatusBadge';
 import { EligibilityModal } from '../components/EligibilityModal';
 import { placementService } from '../data/placementService';
+import { getApiErrorMessage } from '../api/axiosClient';
 import { PlacementDrive, StudentProfile, RootStackParamList } from '../types';
 
 type JobDetailRouteProp = RouteProp<RootStackParamList, 'JobDetail'>;
@@ -83,14 +84,15 @@ export const JobDetailScreen: React.FC = () => {
         {
           text: 'Submit Application',
           onPress: async () => {
-            setApplying(true);
-            const res = await placementService.applyToDrive(drive.id);
-            setApplying(false);
-            if (res.success) {
+            try {
+              setApplying(true);
+              const res = await placementService.applyToDrive(drive.id);
               setIsApplied(true);
               Alert.alert('Application Submitted!', res.message);
-            } else {
-              Alert.alert('Application Failed', res.message);
+            } catch (error) {
+              Alert.alert('Application Failed', getApiErrorMessage(error));
+            } finally {
+              setApplying(false);
             }
           },
         },

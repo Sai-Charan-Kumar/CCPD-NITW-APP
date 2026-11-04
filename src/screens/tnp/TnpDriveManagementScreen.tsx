@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,12 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Switch,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
   Megaphone,
-  Mail,
   Send,
   Users,
   Briefcase,
@@ -22,7 +19,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react-native';
-import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../../constants/theme';
+import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../../constants/theme';
 import { placementService } from '../../data/placementService';
 import { useAuth } from '../../context/AuthContext';
 import { PlacementDrive, RootStackParamList, StudentProfile } from '../../types';
@@ -40,31 +37,40 @@ export const TnpDriveManagementScreen: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Broadcast Tool State
+  // Notice State
+  const [recipientType, setRecipientType] = useState<'all_students' | 'company_group'>('all_students');
+  const [recipientDrives, setRecipientDrives] = useState<{ id: string; companyName: string; role: string }[]>([]);
   const [selectedDriveId, setSelectedDriveId] = useState<string>('');
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMessage, setBroadcastMessage] = useState('');
-  const [sendEmailAlso, setSendEmailAlso] = useState(false);
   const [sending, setSending] = useState(false);
 
-  const loadDrives = async () => {
+  const loadDrives = useCallback(async () => {
     const data = await placementService.getDrives();
     setDrives(data);
     setSelectedDriveId((current) => current && data.some((drive) => drive.id === current) ? current : data[0]?.id || '');
-  };
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    void loadDrives().catch((error) => {
+      console.error('Failed to refresh drive application counts', error);
+    });
+  }, [loadDrives]));
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const [data, studentData, unread] = await Promise.all([
+        const [data, studentData, unread, noticeDrives] = await Promise.all([
           placementService.getDrives(),
           placementService.getStudentProfile(),
           placementService.getUnreadNoticesCount(),
+          placementService.getNoticeRecipientDrives(),
         ]);
         setDrives(data);
         setStudent(studentData);
         setUnreadCount(unread);
+        setRecipientDrives(noticeDrives);
         if (data.length > 0) {
           setSelectedDriveId(data[0].id);
         }
@@ -101,33 +107,27 @@ export const TnpDriveManagementScreen: React.FC = () => {
   };
 
   const handleSendAnnouncement = async () => {
-    if (!broadcastMessage.trim()) {
-      Alert.alert('Incomplete Message', 'Please enter an announcement message.');
+    if (!broadcastTitle.trim() || !broadcastMessage.trim() || (recipientType === 'company_group' && !selectedDriveId)) {
+      Alert.alert('Incomplete Notice', 'Please provide a title, message, and recipient group.');
       return;
     }
 
     setSending(true);
-    // Simulate network dispatch
-    await new Promise((r) => setTimeout(r, 400));
-    setSending(false);
-
-    const activeDrive = drives.find((d) => d.id === selectedDriveId);
-    const driveName = activeDrive ? activeDrive.companyName : 'all active applicants';
-
-    if (sendEmailAlso) {
-      Alert.alert(
-        'Broadcast Dispatched',
-        `Message broadcasted to group & Emails dispatched to ${activeDrive?.appliedCount || 140} registered students for ${driveName}.`
-      );
-    } else {
-      Alert.alert(
-        'Broadcast Published',
-        `Message broadcasted to in-app notification center for ${driveName} applicants.`
-      );
+    try {
+      const result = await placementService.sendNotice({
+        title: broadcastTitle.trim(),
+        content: broadcastMessage.trim(),
+        recipientType,
+        driveId: recipientType === 'company_group' ? selectedDriveId : undefined,
+      });
+      Alert.alert('Notice processed', result.message);
+      setBroadcastTitle('');
+      setBroadcastMessage('');
+    } catch (error) {
+      Alert.alert('Unable to send notice', getApiErrorMessage(error));
+    } finally {
+      setSending(false);
     }
-
-    setBroadcastTitle('');
-    setBroadcastMessage('');
   };
 
   if (loading) {
@@ -156,37 +156,48 @@ export const TnpDriveManagementScreen: React.FC = () => {
       <TouchableOpacity style={styles.modeButton} onPress={() => setTnpMode('student')}>
         <Text style={styles.modeButtonText}>Switch to user mode</Text>
       </TouchableOpacity>
-      {/* Broadcast Tool Section */}
+      {/* Notice Section */}
       <View style={[styles.broadcastCard, SHADOWS.card]}>
         <View style={styles.broadcastHeader}>
           <Megaphone size={20} color={COLORS.primaryAccent} />
-          <Text style={styles.cardTitle}>Broadcast Tool</Text>
+          <Text style={styles.cardTitle}>Notice</Text>
         </View>
         <Text style={styles.cardSubtitle}>
           Dispatch urgent announcements, slot timings, and test links to shortlisted candidates.
         </Text>
 
-        {/* Target Drive Selector */}
-        <Text style={styles.inputLabel}>Select Applicant Pool / Drive</Text>
+        <Text style={styles.inputLabel}>Recipients *</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.driveSelectorScroll}
         >
-          {drives.map((d) => {
-            const isSelected = selectedDriveId === d.id;
+          {[
+            { id: 'all', companyName: 'All Students', role: '' },
+            ...recipientDrives
+          ].map((d) => {
+            const isSelected = d.id === 'all'
+              ? recipientType === 'all_students'
+              : recipientType === 'company_group' && selectedDriveId === d.id;
             return (
               <TouchableOpacity
                 key={d.id}
                 style={[styles.driveSelectorPill, isSelected && styles.driveSelectorPillActive]}
-                onPress={() => setSelectedDriveId(d.id)}
+                onPress={() => {
+                  if (d.id === 'all') {
+                    setRecipientType('all_students');
+                  } else {
+                    setRecipientType('company_group');
+                    setSelectedDriveId(d.id);
+                  }
+                }}
                 activeOpacity={0.7}
               >
                 <Text
                   style={[styles.drivePillText, isSelected && styles.drivePillTextActive]}
                   numberOfLines={1}
                 >
-                  {d.companyName} ({d.appliedCount})
+                  {d.companyName}{d.role ? ` - ${d.role}` : ''}
                 </Text>
               </TouchableOpacity>
             );
@@ -194,7 +205,7 @@ export const TnpDriveManagementScreen: React.FC = () => {
         </ScrollView>
 
         {/* Announcement Title */}
-        <Text style={styles.inputLabel}>Subject / Headline (Optional)</Text>
+        <Text style={styles.inputLabel}>Notice Title *</Text>
         <TextInput
           style={styles.input}
           placeholder="e.g. OA shortlist and reporting instructions"
@@ -215,20 +226,6 @@ export const TnpDriveManagementScreen: React.FC = () => {
           onChangeText={setBroadcastMessage}
           textAlignVertical="top"
         />
-
-        {/* Toggle: Send notice via Email also */}
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleLeft}>
-            <Mail size={16} color={COLORS.primaryAccent} />
-            <Text style={styles.toggleLabel}>Send notice via Email also</Text>
-          </View>
-          <Switch
-            value={sendEmailAlso}
-            onValueChange={setSendEmailAlso}
-            trackColor={{ false: COLORS.border, true: COLORS.primaryAccent }}
-            thumbColor={Platform.OS === 'android' ? COLORS.surface : undefined}
-          />
-        </View>
 
         {/* Send Action Button */}
         <TouchableOpacity
@@ -342,7 +339,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: SPACING.lg,
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: TAB_BAR_RESERVED_HEIGHT,
   },
   createButton: {
     backgroundColor: COLORS.primaryAccent,

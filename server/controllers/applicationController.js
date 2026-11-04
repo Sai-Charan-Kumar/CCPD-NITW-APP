@@ -1,12 +1,19 @@
 const Application = require('../models/Application');
 const Drive = require('../models/Drive');
 const Notification = require('../models/Notification');
+const mongoose = require('mongoose');
 const { toFrontend: driveToFrontend } = require('./driveController');
 const groupController = require('./groupController');
 
+const toIsoString = (value) => {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? date.toISOString() : new Date(0).toISOString();
+};
+
 const toFrontend = (application) => {
-  const a = application.toObject();
+  const a = application.toObject ? application.toObject() : application;
   const drive = a.driveId;
+  if (!a._id || !drive || !drive._id || !drive.ctc) return null;
   return {
     id: a._id.toString(),
     driveId: drive._id.toString(),
@@ -14,17 +21,17 @@ const toFrontend = (application) => {
     companyLogo: drive.companyLogo || '',
     accentColor: drive.accentColor || '#2563EB',
     role: drive.role,
-    appliedDate: a.appliedAt.toISOString(),
+    appliedDate: toIsoString(a.appliedAt || a.createdAt),
     status: a.status === 'Applied' ? 'Application Submitted' : a.status === 'Shortlisted' ? 'Shortlisted for Final' : a.status === 'Interview' ? 'Interview In-Progress' : a.status === 'Offered' ? 'Offer Extended' : a.status === 'Rejected' ? 'Not Shortlisted' : a.status,
     currentRound: drive.currentPhase,
     salaryDisplay: drive.ctc.total,
     canWithdraw: a.status === 'Applied',
-    nextEventDate: a.nextEventDate ? a.nextEventDate.toISOString() : undefined,
+    nextEventDate: a.nextEventDate ? toIsoString(a.nextEventDate) : undefined,
     timeline: a.nextEventDate ? [{
       roundId: `${a._id}-next`,
       roundName: drive.currentPhase,
       status: 'scheduled',
-      date: a.nextEventDate.toISOString(),
+      date: toIsoString(a.nextEventDate),
       time: a.nextEventTime,
       locationOrLink: a.nextEventLocationOrLink,
       instructions: a.nextEventInstructions
@@ -34,6 +41,9 @@ const toFrontend = (application) => {
 
 exports.apply = async (req, res, next) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.body.driveId)) {
+      return res.status(400).json({ message: 'A valid placement drive is required.' });
+    }
     const drive = await Drive.findById(req.body.driveId);
     if (!drive) return res.status(404).json({ message: 'Drive not found.' });
     if (drive.status === 'Closed' || drive.registrationDeadline <= new Date()) {
@@ -52,7 +62,11 @@ exports.apply = async (req, res, next) => {
       const application = await Application.create({ studentId: student._id, driveId: drive._id });
       await Drive.updateOne({ _id: drive._id }, { $inc: { appliedCount: 1 } });
       await groupController.addMember(drive._id, student._id);
-      return res.status(201).json({ success: true, message: `Successfully applied to ${drive.company}.`, application: toFrontend({ ...application.toObject(), driveId: drive }) });
+      return res.status(201).json({
+        success: true,
+        message: `Successfully applied to ${drive.company}.`,
+        application: toFrontend({ ...application.toObject(), driveId: drive })
+      });
     } catch (error) {
       if (error.code === 11000) return res.status(409).json({ message: 'You have already applied to this drive.' });
       throw error;
@@ -63,7 +77,7 @@ exports.apply = async (req, res, next) => {
 exports.mine = async (req, res, next) => {
   try {
     const applications = await Application.find({ studentId: req.user._id }).populate('driveId');
-    return res.json(applications.map(toFrontend));
+    return res.json(applications.map(toFrontend).filter(Boolean));
   } catch (error) { return next(error); }
 };
 

@@ -13,7 +13,6 @@ import {
   Briefcase,
   FileCheck2,
   TrendingUp,
-  BookOpen,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../constants/theme';
 import { Header } from '../components/Header';
@@ -29,6 +28,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { currentUser, tnpMode } = useAuth();
+  const currentUserRole = currentUser?.role;
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [drives, setDrives] = useState<PlacementDrive[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -41,7 +41,7 @@ export const HomeScreen: React.FC = () => {
       const studentData = await placementService.getStudentProfile();
       const allDrives = await placementService.getDrives();
       const allNotices = await placementService.getNotices();
-      const applications = currentUser?.role === 'STUDENT' || tnpMode === 'student'
+      const applications = currentUserRole === 'STUDENT' || tnpMode === 'student'
         ? await placementService.getApplications()
         : [];
       const unread = await placementService.getUnreadNoticesCount();
@@ -54,7 +54,7 @@ export const HomeScreen: React.FC = () => {
     } catch (err) {
       console.error('Failed to load dashboard data', err);
     }
-  }, [currentUser?.role, tnpMode]);
+  }, [currentUserRole, tnpMode]);
 
   useEffect(() => {
     const loadTimer = setTimeout(() => {
@@ -128,14 +128,6 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.shortcutText}>Batch Stats</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.shortcutBtn}
-            onPress={() => navigation.navigate('InterviewExperiences')}
-            activeOpacity={0.7}
-          >
-            <BookOpen size={16} color={COLORS.teal} />
-            <Text style={styles.shortcutText}>Interview Archives</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Urgent Deadlines / Featured Drives */}

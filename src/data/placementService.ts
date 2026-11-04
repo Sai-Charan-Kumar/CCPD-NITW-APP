@@ -3,11 +3,10 @@ import {
   Application,
   Department,
   DrivePhase,
-  InterviewExperience,
   Notice,
   PlacementDrive,
   PlacementStatistics,
-  StudentInterviewRecord,
+  RegisteredStudent,
   StudentProfile,
   NotificationItem,
   GroupMessage,
@@ -28,6 +27,15 @@ export type CoordinatorCandidate = {
 export const placementService = {
   async getStudentProfile(): Promise<StudentProfile> {
     const response = await axiosClient.get<StudentProfile>('/users/profile');
+    return response.data;
+  },
+
+  async updateStudentProfile(input: Partial<Pick<StudentProfile,
+    'name' | 'email' | 'phone' | 'rollNumber' | 'registrationNumber' | 'department'
+    | 'degree' | 'batch' | 'cgpa' | 'activeBacklogs' | 'tenthPercentage'
+    | 'twelfthPercentage' | 'skills'
+  >>): Promise<StudentProfile> {
+    const response = await axiosClient.put<StudentProfile>('/users/profile', input);
     return response.data;
   },
 
@@ -95,6 +103,7 @@ export const placementService = {
     role: string;
     ctc: string;
     registrationDeadline: string;
+    registrationDeadlineDate?: string;
     description: string;
     requiredExtraDocs: string[];
     eligibility: {
@@ -111,6 +120,7 @@ export const placementService = {
     role: string;
     ctc: string;
     registrationDeadline: string;
+    registrationDeadlineDate?: string;
     description: string;
     requiredExtraDocs: string[];
     eligibility: {
@@ -163,6 +173,21 @@ export const placementService = {
     return !category || category === 'All' ? response.data : response.data.filter((notice) => notice.category === category);
   },
 
+  async getNoticeRecipientDrives(): Promise<{ id: string; companyName: string; role: string; registrationDeadline: string }[]> {
+    const response = await axiosClient.get('/notices/recipient-drives');
+    return response.data;
+  },
+
+  async sendNotice(input: {
+    title: string;
+    content: string;
+    recipientType: 'all_students' | 'company_group';
+    driveId?: string;
+  }): Promise<{ targeted: number; delivered: number; failed: number; message: string }> {
+    const response = await axiosClient.post('/notices', input);
+    return response.data;
+  },
+
   async getNoticeById(id: string): Promise<Notice | undefined> {
     const notices = await this.getNotices();
     return notices.find((notice) => notice.id === id);
@@ -176,6 +201,15 @@ export const placementService = {
   async getPlacementStats(): Promise<PlacementStatistics> {
     const response = await axiosClient.get<PlacementStatistics>('/stats');
     return response.data;
+  },
+
+  async getRegisteredStudents(): Promise<RegisteredStudent[]> {
+    const response = await axiosClient.get<RegisteredStudent[]>('/users/registered-students');
+    return response.data;
+  },
+
+  async updateTnpAccess(studentId: string, enabled: boolean): Promise<void> {
+    await axiosClient.put(`/users/${studentId}/tnp-access`, { enabled });
   },
 
   async publishShortlist(driveId: string, identifiers: string[], csv?: string, notes?: string) {
@@ -215,28 +249,6 @@ export const placementService = {
     return response.data;
   },
 
-  async getInterviewExperiences(): Promise<InterviewExperience[]> {
-    return [];
-  },
-
-  async getInterviewExperienceById(_id: string): Promise<InterviewExperience | undefined> {
-    return undefined;
-  },
-
-  async getStudentInterviewHistory(studentId: string): Promise<StudentInterviewRecord[]> {
-    const applications = await this.getApplications();
-    return applications.map((application) => ({
-      id: `APPLICATION-INTERVIEW-${application.id}`,
-      studentId,
-      companyName: application.companyName,
-      role: application.role,
-      interviewDate: application.nextEventDate || application.appliedDate,
-      outcome: application.status === 'Offer Extended' || application.status === 'Offer Accepted'
-        ? 'Offered'
-        : application.status === 'Not Shortlisted' ? 'Not Selected' : 'In Progress',
-      notes: `Tracked from ${application.currentRound}.`,
-    }));
-  },
 };
 
 export type { Department };

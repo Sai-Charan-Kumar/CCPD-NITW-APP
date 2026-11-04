@@ -20,6 +20,19 @@ const DEPARTMENTS: Department[] = [
 ];
 type CreateDriveRoute = RouteProp<RootStackParamList, 'CreateDrive'>;
 
+const getDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const startOfToday = (): Date => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
 export const TnpCreateDriveScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<CreateDriveRoute>();
@@ -36,8 +49,25 @@ export const TnpCreateDriveScreen: React.FC = () => {
   const [allowedDepartments, setAllowedDepartments] = useState<Department[]>([]);
   const [requiredDocs, setRequiredDocs] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [today] = useState<Date>(() => startOfToday());
+  const [pickerDefaultDate] = useState<Date>(() => {
+    const date = startOfToday();
+    date.setDate(date.getDate() + 1);
+    return date;
+  });
 
   const [documentInput, setDocumentInput] = useState('');
+
+  const setFormFromDrive = (drive: PlacementDrive) => {
+    setCompanyName(drive.companyName);
+    setRole(drive.role);
+    setCtc(drive.salary.ctcDisplay);
+    setDeadline(new Date(drive.registrationDeadline));
+    setDescription(drive.description);
+    setRequiredDocs(drive.requiredExtraDocs || []);
+    setMinCgpa(String(drive.eligibility.minCgpa || 0));
+    setAllowedDepartments(drive.eligibility.allowedDepartments || []);
+  };
 
   useEffect(() => {
     if (!driveId) return;
@@ -50,17 +80,6 @@ export const TnpCreateDriveScreen: React.FC = () => {
       setFormFromDrive(drive);
     });
   }, [driveId]);
-
-  const setFormFromDrive = (drive: PlacementDrive) => {
-    setCompanyName(drive.companyName);
-    setRole(drive.role);
-    setCtc(drive.salary.ctcDisplay);
-    setDeadline(new Date(drive.registrationDeadline));
-    setDescription(drive.description);
-    setRequiredDocs(drive.requiredExtraDocs || []);
-    setMinCgpa(String(drive.eligibility.minCgpa || 0));
-    setAllowedDepartments(drive.eligibility.allowedDepartments || []);
-  };
 
   const addDocument = () => {
     const document = documentInput.trim();
@@ -81,8 +100,8 @@ export const TnpCreateDriveScreen: React.FC = () => {
       Alert.alert('Incomplete drive', 'Company, role, CTC, deadline, and company description are required.');
       return;
     }
-    if (deadline <= new Date()) {
-      Alert.alert('Invalid deadline', 'The application deadline must be in the future.');
+    if (getDateKey(deadline) < getDateKey(new Date())) {
+      Alert.alert('Invalid deadline', 'The application deadline cannot be earlier than today.');
       return;
     }
     setSaving(true);
@@ -92,6 +111,7 @@ export const TnpCreateDriveScreen: React.FC = () => {
         role: role.trim(),
         ctc: ctc.trim(),
         registrationDeadline: deadline.toISOString(),
+        registrationDeadlineDate: getDateKey(deadline),
         description: description.trim(),
         requiredExtraDocs: requiredDocs,
         eligibility: {
@@ -186,9 +206,9 @@ export const TnpCreateDriveScreen: React.FC = () => {
       </TouchableOpacity>
       {pickerVisible && (
         <DateTimePicker
-          value={deadline ?? new Date(Date.now() + 24 * 60 * 60 * 1000)}
+          value={deadline ?? pickerDefaultDate}
           mode={Platform.OS === 'ios' ? 'datetime' : pickerMode}
-          minimumDate={new Date()}
+          minimumDate={today}
           onChange={handleDeadlineChange}
         />
       )}

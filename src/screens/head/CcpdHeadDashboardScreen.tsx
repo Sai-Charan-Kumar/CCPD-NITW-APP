@@ -10,26 +10,16 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
-  Platform,
 } from 'react-native';
 import {
-  Mail,
   Send,
-  Building2,
   ChevronDown,
-  Check,
   Megaphone,
 } from 'lucide-react-native';
 import { COLORS, RADIUS, SHADOWS, SPACING, TAB_BAR_RESERVED_HEIGHT, TYPOGRAPHY } from '../../constants/theme';
 import { placementService } from '../../data/placementService';
 import { PlacementStatistics, RegisteredStudent } from '../../types';
-
-const AUDIENCES = [
-  'All Students (UG & PG)',
-  `All 4th Years (Batch ${new Date().getFullYear()})`,
-  'All TnPs & Coordinators',
-  'CSE & ECE Only',
-];
+import { getApiErrorMessage } from '../../api/axiosClient';
 
 export const CcpdHeadDashboardScreen: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -38,13 +28,20 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
   const [students, setStudents] = useState<RegisteredStudent[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
 
-  // Global Notice Broadcast State
+  // Notice State
   const [noticeTitle, setNoticeTitle] = useState('');
   const [noticeMessage, setNoticeMessage] = useState('');
-  const [targetAudience, setTargetAudience] = useState(AUDIENCES[1]);
-  const [sendEmailAlso, setSendEmailAlso] = useState(false);
+  const [recipientType, setRecipientType] = useState<'all_students' | 'company_group'>('all_students');
+  const [recipientDrives, setRecipientDrives] = useState<{ id: string; companyName: string; role: string }[]>([]);
+  const [selectedDriveId, setSelectedDriveId] = useState('');
   const [showAudienceModal, setShowAudienceModal] = useState(false);
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    void placementService.getNoticeRecipientDrives()
+      .then(setRecipientDrives)
+      .catch((error) => console.error('Failed to load notice recipient drives', error));
+  }, []);
 
   useEffect(() => {
     async function loadStats() {
@@ -86,29 +83,27 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
   };
 
   const handleSendGlobalNotice = async () => {
-    if (!noticeTitle.trim() || !noticeMessage.trim()) {
+    if (!noticeTitle.trim() || !noticeMessage.trim() || (recipientType === 'company_group' && !selectedDriveId)) {
       Alert.alert('Incomplete Notice', 'Please provide both title and announcement content.');
       return;
     }
 
     setSending(true);
-    await new Promise((r) => setTimeout(r, 450));
-    setSending(false);
-
-    if (sendEmailAlso) {
-      Alert.alert(
-        'Global Notice Dispatched',
-        `Official CCPD notification issued to "${targetAudience}" & automated emails dispatched to all registered IDs.`
-      );
-    } else {
-      Alert.alert(
-        'Global Notice Published',
-        `Official CCPD notice published to the student portal for "${targetAudience}".`
-      );
+    try {
+      const result = await placementService.sendNotice({
+        title: noticeTitle.trim(),
+        content: noticeMessage.trim(),
+        recipientType,
+        driveId: recipientType === 'company_group' ? selectedDriveId : undefined,
+      });
+      Alert.alert('Notice processed', result.message);
+      setNoticeTitle('');
+      setNoticeMessage('');
+    } catch (error) {
+      Alert.alert('Unable to send notice', getApiErrorMessage(error));
+    } finally {
+      setSending(false);
     }
-
-    setNoticeTitle('');
-    setNoticeMessage('');
   };
 
   if (loading || !stats) {
@@ -149,11 +144,11 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Global Notice Broadcast Card */}
+      {/* Notice Broadcast Card */}
       <View style={[styles.broadcastCard, SHADOWS.card]}>
         <View style={styles.broadcastHeader}>
           <Megaphone size={20} color={COLORS.purple} />
-          <Text style={styles.cardTitle}>Global Notice Broadcast</Text>
+          <Text style={styles.cardTitle}>Notice</Text>
         </View>
         <Text style={styles.cardSubtitle}>
           Issue institutional policy directives, holiday schedules, and recruitment updates with institute-wide reach.
@@ -169,14 +164,13 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
           onChangeText={setNoticeTitle}
         />
 
-        {/* Target Audience Dropdown */}
-        <Text style={styles.inputLabel}>Target Audience *</Text>
+        <Text style={styles.inputLabel}>Recipients *</Text>
         <TouchableOpacity
           style={styles.dropdownBtn}
           onPress={() => setShowAudienceModal(true)}
           activeOpacity={0.7}
         >
-          <Text style={styles.dropdownBtnText}>{targetAudience}</Text>
+          <Text style={styles.dropdownBtnText}>{recipientType === 'all_students' ? 'All Students' : recipientDrives.find((drive) => drive.id === selectedDriveId)?.companyName || 'Company-Specific Group'}</Text>
           <ChevronDown size={18} color={COLORS.textMuted} />
         </TouchableOpacity>
 
@@ -192,22 +186,16 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
           onChangeText={setNoticeMessage}
           textAlignVertical="top"
         />
+        {recipientType === 'company_group' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.driveSelectorScroll}>
+            {recipientDrives.map((drive) => (
+              <TouchableOpacity key={drive.id} style={[styles.driveSelectorPill, selectedDriveId === drive.id && styles.driveSelectorPillActive]} onPress={() => setSelectedDriveId(drive.id)}>
+                <Text style={[styles.drivePillText, selectedDriveId === drive.id && styles.drivePillTextActive]}>{drive.companyName} - {drive.role}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
 
-        {/* Toggle: Send notice via Email also */}
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleLeft}>
-            <Mail size={16} color={COLORS.purple} />
-            <Text style={styles.toggleLabel}>Send notice via Email also</Text>
-          </View>
-          <Switch
-            value={sendEmailAlso}
-            onValueChange={setSendEmailAlso}
-            trackColor={{ false: COLORS.border, true: COLORS.purple }}
-            thumbColor={Platform.OS === 'android' ? COLORS.surface : undefined}
-          />
-        </View>
-
-        {/* Action Button: Send Global Notice */}
         <TouchableOpacity
           style={styles.sendBtn}
           onPress={handleSendGlobalNotice}
@@ -219,32 +207,17 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
           ) : (
             <>
               <Send size={16} color={COLORS.textInverse} />
-              <Text style={styles.sendBtnText}>Send Global Notice</Text>
+              <Text style={styles.sendBtnText}>Send Notice</Text>
             </>
           )}
         </TouchableOpacity>
-      </View>
-
-      {/* Top Recruiters Snapshot */}
-      <View style={[styles.sectionCard, SHADOWS.card]}>
-        <View style={styles.sectionHeaderRow}>
-          <Building2 size={18} color={COLORS.primaryAccent} />
-          <Text style={styles.sectionTitle}>Key Hiring Corporate Partners</Text>
-        </View>
-
-        {stats.topRecruiters.slice(0, 5).map((r, idx) => (
-          <View key={idx} style={styles.recruiterRow}>
-            <Text style={styles.recruiterName}>{r.name}</Text>
-            <Text style={styles.recruiterOffers}>{r.offersCount} offers</Text>
-            <Text style={styles.recruiterCtc}>{r.highestPackage}</Text>
-          </View>
-        ))}
       </View>
 
       <View style={[styles.sectionCard, SHADOWS.card]}>
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Registered Students & T&P Access</Text>
         </View>
+
         {studentsLoading ? (
           <ActivityIndicator size="small" color={COLORS.purple} />
         ) : students.length === 0 ? (
@@ -271,29 +244,25 @@ export const CcpdHeadDashboardScreen: React.FC = () => {
         )}
       </View>
 
-      {/* Target Audience Modal */}
       <Modal visible={showAudienceModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, SHADOWS.modal]}>
-            <Text style={styles.modalTitle}>Select Target Audience</Text>
-            {AUDIENCES.map((a) => {
-              const isSelected = targetAudience === a;
-              return (
+            <Text style={styles.modalTitle}>Select Recipients</Text>
+            {[
+              ['all_students', 'All Students'],
+              ['company_group', 'Company-Specific Group'],
+            ].map(([value, label]) => (
                 <TouchableOpacity
-                  key={a}
-                  style={[styles.modalItem, isSelected && styles.modalItemSelected]}
+                  key={value}
+                  style={styles.modalItem}
                   onPress={() => {
-                    setTargetAudience(a);
+                    setRecipientType(value as 'all_students' | 'company_group');
                     setShowAudienceModal(false);
                   }}
                 >
-                  <Text style={[styles.modalItemText, isSelected && styles.modalItemTextSelected]}>
-                    {a}
-                  </Text>
-                  {isSelected && <Check size={18} color={COLORS.purple} />}
+                  <Text style={styles.modalItemText}>{label}</Text>
                 </TouchableOpacity>
-              );
-            })}
+            ))}
             <TouchableOpacity
               style={styles.modalCloseBtn}
               onPress={() => setShowAudienceModal(false)}
@@ -390,6 +359,30 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     color: COLORS.textMuted,
     marginBottom: SPACING.md,
+  },
+  driveSelectorScroll: {
+    gap: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  driveSelectorPill: {
+    backgroundColor: COLORS.surfaceAlt,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+  },
+  driveSelectorPillActive: {
+    backgroundColor: COLORS.purpleLight,
+    borderColor: COLORS.purple,
+  },
+  drivePillText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+  },
+  drivePillTextActive: {
+    color: COLORS.purple,
+    fontWeight: '700',
   },
   inputLabel: {
     ...TYPOGRAPHY.caption,
@@ -679,33 +672,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...TYPOGRAPHY.h4,
     color: COLORS.textPrimary,
-  },
-  recruiterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.surfaceAlt,
-  },
-  recruiterName: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.textPrimary,
-    fontSize: 13,
-    flex: 2,
-  },
-  recruiterOffers: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
-    flex: 1,
-    textAlign: 'center',
-  },
-  recruiterCtc: {
-    ...TYPOGRAPHY.bodyBold,
-    color: COLORS.primaryAccent,
-    fontSize: 13,
-    flex: 1.5,
-    textAlign: 'right',
   },
   studentRow: {
     flexDirection: 'row',

@@ -10,7 +10,7 @@ const toStudentProfile = (user) => ({
   phone: user.phone || '',
   department: user.department,
   degree: user.degree || '',
-  batch: user.batch || `20${user.email.slice(2, 4)}`,
+  batch: user.batch || (user.email ? `20${user.email.slice(2, 4)}` : ''),
   cgpa: user.cgpa || 0,
   activeBacklogs: user.activeBacklogs || 0,
   placementStatus: user.placementStatus,
@@ -46,17 +46,71 @@ exports.getStudentProfile = async (req, res, next) => {
 exports.updateStudentProfile = async (req, res, next) => {
   try {
     const updates = {};
+    const allowedFields = [
+      'name', 'email', 'phone', 'rollNumber', 'registrationNumber',
+      'department', 'degree', 'batch', 'cgpa', 'activeBacklogs',
+      'tenthPercentage', 'twelfthPercentage', 'skills'
+    ];
+    const submittedFields = Object.keys(req.body);
+    const unsupportedField = submittedFields.find((field) => !allowedFields.includes(field) && field !== 'resume');
+    if (unsupportedField) {
+      return res.status(400).json({ message: `${unsupportedField} cannot be changed through the profile.` });
+    }
+
     if (req.body.name !== undefined) {
       if (typeof req.body.name !== 'string' || !req.body.name.trim()) {
         return res.status(400).json({ message: 'Name cannot be empty.' });
       }
       updates.name = req.body.name.trim();
     }
+    if (req.body.email !== undefined) {
+      if (typeof req.body.email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(req.body.email.trim())) {
+        return res.status(400).json({ message: 'Enter a valid email address.' });
+      }
+      const email = req.body.email.trim().toLowerCase();
+      const existing = await User.findOne({ email, _id: { $ne: req.user._id } }).select('_id');
+      if (existing) return res.status(409).json({ message: 'That email address is already in use.' });
+      updates.email = email;
+    }
     if (req.body.phone !== undefined) {
-      if (typeof req.body.phone !== 'string') {
-        return res.status(400).json({ message: 'Phone must be a string.' });
+      if (typeof req.body.phone !== 'string' || (req.body.phone.trim() && !/^\+?[0-9\s()-]{7,20}$/.test(req.body.phone.trim()))) {
+        return res.status(400).json({ message: 'Enter a valid phone number.' });
       }
       updates.phone = req.body.phone.trim();
+    }
+    for (const field of ['rollNumber', 'registrationNumber', 'department', 'batch']) {
+      if (req.body[field] !== undefined) {
+        if (typeof req.body[field] !== 'string') {
+          return res.status(400).json({ message: `${field} must be a string.` });
+        }
+        updates[field] = req.body[field].trim();
+      }
+    }
+    if (req.body.degree !== undefined) {
+      if (req.body.degree !== '' && !['B.Tech', 'M.Tech', 'MCA'].includes(req.body.degree)) {
+        return res.status(400).json({ message: 'Degree must be B.Tech, M.Tech, or MCA.' });
+      }
+      if (req.body.degree) updates.degree = req.body.degree;
+    }
+    for (const field of ['cgpa', 'activeBacklogs', 'tenthPercentage', 'twelfthPercentage']) {
+      if (req.body[field] !== undefined) {
+        if (typeof req.body[field] !== 'number' || !Number.isFinite(req.body[field])) {
+          return res.status(400).json({ message: `${field} must be a number.` });
+        }
+        const valid = field === 'cgpa'
+          ? req.body[field] >= 0 && req.body[field] <= 10
+          : field === 'activeBacklogs'
+            ? Number.isInteger(req.body[field]) && req.body[field] >= 0
+            : req.body[field] >= 0 && req.body[field] <= 100;
+        if (!valid) return res.status(400).json({ message: `${field} is outside its valid range.` });
+        updates[field] = req.body[field];
+      }
+    }
+    if (req.body.skills !== undefined) {
+      if (!Array.isArray(req.body.skills) || req.body.skills.some((skill) => typeof skill !== 'string')) {
+        return res.status(400).json({ message: 'Skills must be a list of text values.' });
+      }
+      updates.skills = req.body.skills.map((skill) => skill.trim()).filter(Boolean);
     }
     if (req.body.resume !== undefined) {
       const resume = req.body.resume;
@@ -85,6 +139,9 @@ exports.updateStudentProfile = async (req, res, next) => {
     if (!user) return res.status(404).json({ message: 'User account no longer exists.' });
     return res.json(toStudentProfile(user));
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.email) {
+      return res.status(409).json({ message: 'That email address is already in use.' });
+    }
     return next(error);
   }
 };

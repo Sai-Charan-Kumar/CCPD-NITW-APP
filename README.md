@@ -41,11 +41,11 @@ the API server or authenticated application flows can be used.
    npx expo start
    ```
 
-The frontend reads its backend URL from `EXPO_PUBLIC_API_URL`. Copy
-`.env.example` to `.env` in the project root. Use
-`http://localhost:5000/api` for web or an iOS simulator, and use
-`http://10.0.2.2:5000/api` for an Android emulator. For a physical device,
-replace the host with the backend computer's LAN IP address.
+The frontend automatically uses the current Expo host for the backend, so it
+does not depend on a changing LAN IP address. Copy `.env.example` to `.env` in
+the project root only if needed. For a deployed backend, set
+`EXPO_PUBLIC_API_URL` explicitly; otherwise the app uses the current browser
+host on web and the current Expo host on native devices.
 
 TNP coordinator accounts can switch between Student mode and TNP mode from
 the account header. Student mode provides the normal student experience,
@@ -53,9 +53,11 @@ including drives and applications; TNP mode provides drive creation,
 placement operations, and coordinator workflows. The account remains a TNP
 account on the server in both modes.
 
-The phone and computer must be connected to the same network, and Windows
-Firewall must allow inbound connections to port 5000. After changing `.env`,
-restart Expo with `npx expo start -c` so the URL is reloaded.
+The phone and computer must still be connected to the same network, and
+Windows Firewall must allow inbound connections to port 5000. After changing
+`.env`, restart Expo with `npx expo start --clear --lan` so the URL is
+reloaded. If Expo Go still shows an old IP, close Expo Go completely and
+reconnect it to the new QR code.
 
 This app uses React Navigation directly rather than Expo Router. The root
 `.env` file disables Expo Router's SDK 56+ compatibility diagnostic, which is
